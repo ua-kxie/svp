@@ -27,7 +27,6 @@ import multiprocessing
 import importlib
 import datetime
 import copy
-import imp
 
 import time
 import xml.etree.ElementTree as ET

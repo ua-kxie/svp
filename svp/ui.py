@@ -21,26 +21,19 @@ limitations under the License.
 
 """
 import textwrap
-from builtins import input
 from builtins import range
 
 
 import os
 import sys
-import multiprocessing
 import argparse
 import traceback
 from importlib.machinery import SourceFileLoader as imp
-import importlib
-import datetime
 import time
-import struct
-import hashlib
 import glob
 import multiprocessing
 import wx
 import wx.adv
-import xlsxwriter
 
 import numpy
 import wxmplot
@@ -112,7 +105,7 @@ def resource_path(relative_path):
         base_path = sys._MEIPASS
 
     except Exception:
-        base_path = os.path.abspath(".")
+        base_path = os.path.abspath("..")
     return os.path.join(base_path, relative_path)
 
 images_path = resource_path("images")
@@ -1433,7 +1426,7 @@ class NewTestDialog(wx.Dialog):
                 path = entity.path()
                 path.append(entity.name)
                 i = path.index(svp.SCRIPTS_DIR)
-                name = script.PATH_SEP.join(path[i+1:])
+                name = script.PATH_SEP.join(path[i + 1:])
                 self.script_path.SetValue(name)
             except Exception as e:
                 raise UIError('Error creating script path: %s' % str(e))
