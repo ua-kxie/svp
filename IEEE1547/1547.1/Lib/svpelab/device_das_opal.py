@@ -12,7 +12,10 @@ from . import waveform
 from . import dataset
 import sys
 import glob, os
+import re
+import shutil
 from collections import OrderedDict
+
 
 # data_points = [  # 3 phase
 #     'TIME',
@@ -88,13 +91,14 @@ class Device(object):
             sys.path.insert(0, rt_import_path)
             import RtlabApi
             import OpalApiPy
+            import DataloggerApi
             self.RtlabApi = RtlabApi
             self.OpalApiPy = OpalApiPy
+            self.DataloggerApi = DataloggerApi
         except ImportError as e:
-            ts.log('RtlabApi Import Error. Check the version number. Using path = %s. %s' % (import_path, e))
+            self.ts.log('RtlabApi Import Error. Check the version number. Using path = %s. %s' % (import_path, e))
             print('RtlabApi Import Error. Check the version number. Using path = %s' % import_path)
             print(e)
-
         self.points = None
         self.point_indexes = []
 
@@ -102,6 +106,7 @@ class Device(object):
         self.sc_capture = self.params['sc_capture']
         self.sample_interval = self.params['sample_interval']
         self.wfm_dir = self.params['wfm_dir']
+        self.data_dir = self.params['data_dir']
         self.data_name = self.params['data_name']
         self.dc_measurement_device = None
         # _, self.model_name = self.RtlabApi.GetCurrentModel()
@@ -113,6 +118,8 @@ class Device(object):
         self.hil = self.params['hil']
         self.model_name = self.hil.rt_lab_model
         self.target_name = self.hil.target_name
+
+        self.signalgroup = None
 
         self.gridsim = self.params['gridsim']
         self.dc_measurement_device = self.params['dc_measurement_device']
@@ -233,17 +240,17 @@ class Device(object):
             self.opal_fast_1547 = OrderedDict({  # data point : analog channel name
                 'TIME': self.model_name + "/SM_Source/IEEE_1547_TESTING/Clock/port1",
                 # Voltage
-                'AC_VRMS_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_1/Switch/port1',
-                'AC_VRMS_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_2/Switch/port1',
-                'AC_VRMS_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_3/Switch/port1',
+                'AC_VRMS_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_1/port1',
+                'AC_VRMS_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_2/port1',
+                'AC_VRMS_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_VRMS_3/port1',
                 # Current
-                'AC_IRMS_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_1/Switch/port1',
-                'AC_IRMS_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_2/Switch/port1',
-                'AC_IRMS_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_3/Switch/port1',
+                'AC_IRMS_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_1/port1',
+                'AC_IRMS_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_2/port1',
+                'AC_IRMS_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_IRMS_3/port1',
                 # Frequency
-                'AC_FREQ_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ_1/port1',
-                'AC_FREQ_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ_2/port1',
-                'AC_FREQ_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ_3/port1',
+                'AC_FREQ_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ/port1',
+                'AC_FREQ_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ/port1',
+                'AC_FREQ_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_FREQ/port1',
                 # Active Power
                 'AC_P_1': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_P_1/port1',
                 'AC_P_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_P_2/port1',
@@ -261,10 +268,26 @@ class Device(object):
                 'AC_PF_2': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_PF_2/port1',
                 'AC_PF_3': self.model_name + '/SM_Source/IEEE_1547_TESTING/SignalConditionning/AC_PF_3/port1',
 
-                # TODO : As some point this will be read it from HIL
-                'DC_V': None,
-                'DC_I': None,
-                'DC_P': None})
+                # # TODO : As some point this will be read it from HIL
+                # 'DC_V': None,
+                # 'DC_I': None,
+                # 'DC_P': None
+                })
+
+            self.opal_nimba = OrderedDict({  # data point : analog channel name
+                'TIME': self.model_name + "/sm_computation/Output measurments/Clock/port1",
+                'Demand_kW': self.model_name + '/sm_computation/Output measurments/Demand_kW/port1',
+                'CLoad_kW': self.model_name + '/sm_computation/Output measurments/CLoad_kW/port1',
+                'PvPower_kW': self.model_name + '/sm_computation/Output measurments/PvPower_kW/port1',
+                'PvCurtailed_kW': self.model_name + '/sm_computation/Output measurments/PvCurtailed_kW/port1',
+                'D100Fuel_L': self.model_name + '/sm_computation/Output measurments/D100Fuel_L/port1',
+                'D100Power_kW': self.model_name + '/sm_computation/Output measurments/D100Power_kW/port1',
+                'D150Fuel_L': self.model_name + '/sm_computation/Output measurments/D150Fuel_L/port1',
+                'D150Power_kW': self.model_name + '/sm_computation/Output measurments/D150Power_kW/port1',
+                'BESSPower_kW': self.model_name + '/sm_computation/Output measurments/BESSPower_kW/port1',
+                'BESSsoc_pu': self.model_name + '/sm_computation/Output measurments/BESSsoc_pu/port1',
+                'BESScap_kWh': self.model_name + '/sm_computation/Output measurments/BESScap_kWh/port1',
+                'BESScycles': self.model_name + '/sm_computation/Output measurments/BESScycles/port1'})
 
             # Mapping from the  channels to be captured and the names that are used in the Opal environment
             opal_points_map = {
@@ -272,6 +295,7 @@ class Device(object):
                 'Opal_Phase_Jump_Realign': self.opal_map_phase_jump_w_phase_realign,  # Phase Jump Tests with Realignment
                 'Ekhi': self.opal_map_ekhi,  # For use with Ekhi
                 'Opal_Fast_1547': self.opal_fast_1547,   # PCRT, VRT and FRT
+                'Opal_Nimba': self.opal_nimba
                 }
             self.data_point_map = opal_points_map[self.map]  # dict with the {data_point: opal signal} map
 
@@ -402,7 +426,7 @@ class Device(object):
         # location where matlab saves the waveform data (.csv)
         # self.csv_location = self.wfm_dir + f'\{self.data_name.split(".mat")[0]}_temp.csv'
         self.wfm_channels = WFM_CHANNELS.get(self.params['wfm_chan_list'])
-        self.waveform_config({"mat_file_name": self.data_name})
+        # self.waveform_config({"mat_file_name": self.data_name})
 
         # delete the old data file
         try:
@@ -425,7 +449,11 @@ class Device(object):
         pass
 
     def close(self):
-        pass
+        #print('Done all recording. Recording status code: ' + str(self.signalgroup.get_recording_status()))
+        if self.signalgroup is not None:
+            self.signalgroup.close()
+        else:
+            pass
 
     def data_capture(self, enable=True):
         pass
@@ -457,46 +485,50 @@ class Device(object):
                 except Exception as e:
                     self.ts.log_debug('Could not get data using get_acq_signals_raw. Error: %s' % e)
             else:
+                signals = ()
                 for chan in self.data_points_device:
-                    # self.ts.log_debug('self.data_points = %s' % self.data_points)
-                    signal = self.data_point_map[chan]  # get signal name associated with data name
-                    # self.ts.log_debug('Chan = %s, signal = %s' % (chan, signal))
-                    if signal is None:  # skip the signals that have no mapping to the simulink model
-
-                        # search the dc measurement object for the data that isn't in the opal_points_map
-                        if self.dc_measurement_device is not None:
-                            dc_value = dc_meas.get(chan)  # signal = 'DC_V', 'DC_I', or 'DC_P'
-                            # if self.ts is not None:
-                            #     self.ts.log_debug('Setting Chan = %s to dc_value = %s' % (chan, dc_value))
-                            # else:
-                            #     print('Setting Chan = %s to dc_value = %s' % (chan, dc_value))
-                            if dc_value is not None:
-                                data.append(dc_value)
-                            else:  # Channel data missing
-                                # self.ts.log_debug('Appending None for data point: %s' % chan)
-                                data.append(None)
-                        else:  # DC Measurement Object missing
-
-                            # self.ts.log_debug('Appending None for data point: %s' % chan)
-                            data.append(None)
-                        continue
-
-                    # verify the model is running before getting the signal data.
-                    status, _ = self.RtlabApi.GetModelState()
-                    if status == self.RtlabApi.MODEL_RUNNING:
-                        signal_value = self.RtlabApi.GetSignalsByName(signal)
-                        # self.ts.log_warning('signal_value is %s from Opal' % signal_value)
-                    else:
-                        signal_value = None
-                        # self.ts.log_warning('Signal_value set to None because Opal isn\'t running')
-
-                    # self.ts.log_debug('Signal %s = %s' % (signal, signal_value))
-                    # self.ts.log_warning('type(sig) %s' % type(signal_value))
-                    if signal_value is not None and signal_value is not 'None':
-                        data.append(signal_value)
-                    else:
-                        data.append(None)
-
+                    signals = signals + (self.data_point_map[chan],)
+                #     # self.ts.log_debug('self.data_points = %s' % self.data_points)
+                #     signal = self.data_point_map[chan]  # get signal name associated with data name
+                #     # self.ts.log_debug('Chan = %s, signal = %s' % (chan, signal))
+                #     if signal is None:  # skip the signals that have no mapping to the simulink model
+                #
+                #         # search the dc measurement object for the data that isn't in the opal_points_map
+                #         if self.dc_measurement_device is not None:
+                #             dc_value = dc_meas.get(chan)  # signal = 'DC_V', 'DC_I', or 'DC_P'
+                #             # if self.ts is not None:
+                #             #     self.ts.log_debug('Setting Chan = %s to dc_value = %s' % (chan, dc_value))
+                #             # else:
+                #             #     print('Setting Chan = %s to dc_value = %s' % (chan, dc_value))
+                #             if dc_value is not None:
+                #                 data.append(dc_value)
+                #             else:  # Channel data missing
+                #                 # self.ts.log_debug('Appending None for data point: %s' % chan)
+                #                 data.append(None)
+                #         else:  # DC Measurement Object missing
+                #
+                #             # self.ts.log_debug('Appending None for data point: %s' % chan)
+                #             data.append(None)
+                #         continue
+                #
+                #     # verify the model is running before getting the signal data.
+                #     status, _ = self.RtlabApi.GetModelState()
+                #     if status == self.RtlabApi.MODEL_RUNNING:
+                #         signal_value = self.RtlabApi.GetSignalsByName(signal)
+                #         self.ts.log_warning('signal_value is %s from Opal' % signal_value)
+                #     else:
+                #         signal_value = None
+                #         # self.ts.log_warning('Signal_value set to None because Opal isn\'t running')
+                #
+                #     # self.ts.log_debug('Signal %s = %s' % (signal, signal_value))
+                #     # self.ts.log_warning('type(sig) %s' % type(signal_value))
+                #     if signal_value is not None and signal_value is not 'None':
+                #         data.append(signal_value)
+                #     else:
+                #         data.append(None)
+                signal_value = self.RtlabApi.GetSignalsByName(signals)
+                # self.ts.log_warning(f'signals are {str(signals)} and signal_value is {str(signal_value)} from Opal')
+                data = data + list(signal_value)
         except Exception as e:
             self.ts.log_debug('Could not get data. Simulation likely completed. Error: %s' % e)
             # self.ts.log_warning('self.data_points = %s.  Writing all Nones.' % self.data_points)
@@ -555,11 +587,86 @@ class Device(object):
         # variables.append((end_time_variable, end_time_value))
         # self.hil.set_variables(variables)
 
-        # self.ts.log_debug(params)
+        self.ts.log_debug(params)
         mat_file_name = params.get("mat_file_name")
+        self.wfm_channels = params.get("wfm_channels")
         self.data_name = mat_file_name
         self.mat_location = self.wfm_dir + mat_file_name
         self.csv_location = self.wfm_dir + f'\{mat_file_name.split(".mat")[0]}_temp.csv'
+        # signal_names = (
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vinv_a/Vinv_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vinv_b/Vinv_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vinv_c/Vinv_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Iinv_a/Iinv_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Iinv_b/Iinv_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Iinv_c/Iinv_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vgrid_a/Vgrid_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vgrid_b/Vgrid_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vgrid_c/Vgrid_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Igrid_a/Igrid_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Igrid_b/Igrid_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Igrid_c/Igrid_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vr_a/Vr_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vr_b/Vr_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vr_c/Vr_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ir_a/Ir_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ir_b/Ir_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ir_c/Ir_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vl_a/Vl_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vl_b/Vl_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vl_c/Vl_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Il_a/Il_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Il_b/Il_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Il_c/Il_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vc_a/Vc_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vc_b/Vc_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Vc_c/Vc_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ic_a/Ic_a",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ic_b/Ic_b",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Ic_c/Ic_c",
+        #     self.model_name + "/SM_Source/Datalogger_acq/Inv_freq/Inv_freq",
+        #     self.model_name + "/SM_Source/Datalogger_acq/load_freq/load_freq",
+        #     self.model_name + "/SM_Source/Datalogger_acq/isl/isl"
+        # )
+        # # self.datalogger_frame_config = self.RtlabApi.DataloggerApi.FrameConfig(signal_names=signal_names, frame_size_ns=10e9)
+        # system_info = self.RtlabApi.GetTargetNodeSystemInfo(self.target_name)
+        # self.signalgroup = self.DataloggerApi.SignalGroup("C:\OPAL-RT\WORKSPACEforEVERYONE\SIL_CL_eugene\configurations\SyncExchangerRegistry\DriverConfigs\dib_configuration_for_RECORDER_IEEE_1547_Simulated_Test_Bench_SM_Source.json")
+        #
+        # self.DataloggerApi.get_signal_groups_info()
+        # a = 0
+        status, _ = self.RtlabApi.GetModelState()
+        if status == self.RtlabApi.MODEL_RUNNING and self.params['datalogger_ena'] == 'Yes':
+            SubSystemlist1, SubSystemlist2 = self.RtlabApi.GetSubsystemList()
+            subsysName, logicalId, TargetName = SubSystemlist1
+            targetPlatform, version, arch, diskspace, cpucnt, cpuspeed, IP = self.RtlabApi.GetTargetNodeSystemInfo(
+                self.target_name)
+            a = self.DataloggerApi.get_signal_groups_info(IP)
+            self.signalgroup = self.DataloggerApi.SignalGroup(str(IP), 'Datalogger_acq')
+            self.ts.sleep(1)
+            self.signalgroup.stop_recording()
+
+            # self.signalgroup.start_recording()
+            #
+            # self.ts.sleep(2)
+            # self.signalgroup.stop_recording()
+            # record_status = self.signalgroup.get_recording_status()
+            # self.ts.log('Done all recording. Recording status code: ' + str(record_status))
+
+            # self.ts.log_warning('signal_value is %s from Opal' % signal_value)
+        else:
+            self.ts.log_warning('Datalogger is not configured')
+            # self.ts.log_warning('Signal_value set to None because Opal isn\'t running')
+
+    def waveform_record(self, filename=None):
+        if filename is None:
+            self.signalgroup.start_recording()
+            a = 0
+        else:
+            self.signalgroup.start_recording(filename)
+
+    def waveform_stop_record(self):
+        self.signalgroup.stop_recording()
+
 
     def waveform_capture(self, enable=True, sleep=None):
         """
@@ -581,7 +688,7 @@ class Device(object):
         """
         pass
 
-    def waveform_capture_dataset(self):
+    def waveform_capture_dataset(self, counter=None, name_dict=None):
         """
         Convert saved waveform data into a list of datasets
 
@@ -594,69 +701,78 @@ class Device(object):
         """
 
         # in case multiple waveform captures are required for the test, create list of datasets
-        datasets = []
-        os.chdir(self.wfm_dir)
-        self.ts.log_debug(f'.mat in  {self.wfm_dir,self.data_name }')
+        if self.params['datalogger_ena'] == 'No':
+            datasets = []
+            os.chdir(self.wfm_dir)
+            self.ts.log_debug(f'.mat in  {self.wfm_dir,self.data_name }')
 
-        for entry in glob.glob("*.mat"):
-            if self.data_name in entry:
-                self.mat_location = f'{self.wfm_dir}\{entry}'
-                self.ts.log_debug(f'The model state is {self.hil.model_state()}')
+            for entry in glob.glob("*.mat"):
+                if self.data_name in entry:
+                    self.mat_location = f'{self.wfm_dir}\{entry}'
+                    self.ts.log_debug(f'The model state is {self.hil.model_state()}')
 
-                while self.hil.model_state() == "Model Resetting":
-                    self.ts.log_debug('The model is still resetting. Waiting 10 sec')
-                    self.ts.sleep(10)
+                    while self.hil.model_state() == "Model Resetting":
+                        self.ts.log_debug('The model is still resetting. Waiting 10 sec')
+                        self.ts.sleep(10)
 
-                # Pull in saved data from the .mat files
-                self.ts.log('Loading %s file in matlab...' % self.mat_location)
-                m_cmd = "load('" + self.mat_location + "')"
-                # self.ts.log_debug('Running matlab command: %s' % m_cmd)
-                if isinstance(self.matlab_cmd(m_cmd), MatlabException):
-                    self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
-                    self.ts.sleep(10)
-                    self.matlab_cmd(m_cmd)
+                    # Pull in saved data from the .mat files
+                    self.ts.log('Loading %s file in matlab...' % self.mat_location)
+                    m_cmd = "load('" + self.mat_location + "')"
+                    # self.ts.log_debug('Running matlab command: %s' % m_cmd)
+                    if isinstance(self.matlab_cmd(m_cmd), MatlabException):
+                        self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
+                        self.ts.sleep(10)
+                        self.matlab_cmd(m_cmd)
 
-                # Add the header to the data in Matlab
-                self.ts.log('Adding Data Header from self.wfm_channels = %s' % self.wfm_channels)
-                m_cmd = "header = {" + str(self.wfm_channels)[1:-1] + "};"
-                if isinstance(self.matlab_cmd(m_cmd), MatlabException):
-                    self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
-                    self.ts.sleep(10)
-                    self.matlab_cmd(m_cmd)
-                self.matlab_cmd("[x, y] = size(Data);")
-                self.matlab_cmd("data_w_header = cell(y+1,x);")
-                self.matlab_cmd("data_w_header(1,:) = header;")
-                self.matlab_cmd("data_w_header(2:y+1,:) = num2cell(Data');")
+                    # Add the header to the data in Matlab
+                    self.ts.log('Adding Data Header from self.wfm_channels = %s' % self.wfm_channels)
+                    m_cmd = "header = {" + str(self.wfm_channels)[1:-1] + "};"
+                    if isinstance(self.matlab_cmd(m_cmd), MatlabException):
+                        self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
+                        self.ts.sleep(10)
+                        self.matlab_cmd(m_cmd)
+                    self.matlab_cmd("[x, y] = size(Data);")
+                    self.matlab_cmd("data_w_header = cell(y+1,x);")
+                    self.matlab_cmd("data_w_header(1,:) = header;")
+                    self.matlab_cmd("data_w_header(2:y+1,:) = num2cell(Data');")
 
-                # save as xlsx
-                # m_cmd = "xlswrite(('" + self.csv_location + "'), data_w_header)"
-                # self.ts.log_debug('Running matlab command: %s' % m_cmd)
-                # self.ts.log_debug('Matlab: ' + self.matlab_cmd(m_cmd))
+                    # save as xlsx
+                    # m_cmd = "xlswrite(('" + self.csv_location + "'), data_w_header)"
+                    # self.ts.log_debug('Running matlab command: %s' % m_cmd)
+                    # self.ts.log_debug('Matlab: ' + self.matlab_cmd(m_cmd))
 
-                # save the data as a csv file so it is easier to read in python
-                self.ts.log('Saving the waveform data as .csv file in %s' % self.csv_location)
-                m_cmd = "fid = fopen('" + self.csv_location + "', 'wt');"
-                m_cmd += "if fid > 0\n"
-                m_cmd += "fprintf(fid, '" + "%s,"*(len(self.wfm_channels)-1) + "%s\\n', data_w_header{1,:});\n"
-                m_cmd += "for k=2:size(data_w_header, 1)\n"
-                m_cmd += "fprintf(fid, '" + "%f,"*(len(self.wfm_channels)-1) + "%f\\n', data_w_header{k,:});\n"
-                m_cmd += "end\n"
-                m_cmd += "fclose(fid);\n"
-                m_cmd += "end\n"
+                    # save the data as a csv file so it is easier to read in python
+                    self.ts.log('Saving the waveform data as .csv file in %s' % self.csv_location)
+                    m_cmd = "fid = fopen('" + self.csv_location + "', 'wt');"
+                    m_cmd += "if fid > 0\n"
+                    m_cmd += "fprintf(fid, '" + "%s,"*(len(self.wfm_channels)-1) + "%s\\n', data_w_header{1,:});\n"
+                    m_cmd += "for k=2:size(data_w_header, 1)\n"
+                    m_cmd += "fprintf(fid, '" + "%f,"*(len(self.wfm_channels)-1) + "%f\\n', data_w_header{k,:});\n"
+                    m_cmd += "end\n"
+                    m_cmd += "fclose(fid);\n"
+                    m_cmd += "end\n"
 
-                # self.ts.log_debug('Matlab: ' + m_cmd)
-                if self.matlab_cmd(m_cmd) == '':
-                    self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
-                    self.ts.sleep(10)
-                    self.matlab_cmd(m_cmd)
+                    # self.ts.log_debug('Matlab: ' + m_cmd)
+                    if self.matlab_cmd(m_cmd) == '':
+                        self.ts.log_warning('Matlab command failed. Waiting 10 sec and retrying...')
+                        self.ts.sleep(10)
+                        self.matlab_cmd(m_cmd)
 
-                # read csv file and convert to ds
-                ds = dataset.Dataset()
-                ds.from_csv(filename=self.csv_location)
+                    # read csv file and convert to ds
+                    ds = dataset.Dataset()
+                    ds.from_csv(filename=self.csv_location)
 
-                datasets.append(ds)
+                    datasets.append(ds)
 
-        return datasets
+            return datasets
+        else:
+            os.chdir(self.data_dir)
+            dir_list = os.listdir(self.data_dir)
+            dir_list = dir_list[:-1]
+            for name in dir_list:
+                test_number = int(re.findall(r'\.(.*?)\.' , name)[0])
+                new_name = name_dict[test_number] + '.csv'
+                shutil.move(self.data_dir + name, self.ts.result_file_path('') + new_name)
 
     def get_signals(self):
         """

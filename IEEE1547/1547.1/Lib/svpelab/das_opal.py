@@ -33,9 +33,14 @@ def params(info, group_name=None):
     info.param(pname('wfm_dir'), active_value="Yes", label='Waveform Directory',
                default='C:\\Users\\DETLDAQ\\OPAL-RT\\ RT-LABv2019.1_Workspace\\ IEEE_1547.1_Phase_Jump\\models\\'
                        'Phase_Jump_A_B_A\\phase_jump_a_b_a_sm_source\\OpREDHAWKtarget\\')
+    info.param(pname('data_dir'), active_value="Yes", label='Data Directory',
+               default='C:\\OPAL-RT\\WORKSPACEforEVERYONE\\SIL_CL_eugene\\data\\')
     info.param(pname('wfm_chan_list'),  label='Waveform Channel List', default='PhaseJump')
     info.param(pname('data_name'), label='Waveform Data File Name (.mat)', default='Data.mat')
     info.param(pname('sc_capture'), label='Capture data from the console?', default='No', values=['Yes', 'No'])
+    info.param(pname('datalogger_ena'), label='Are you using the Datalogger?', default='No', values=['Yes', 'No'])
+    info.param(pname('datalogger_signal_group_name'), label='Datalogger signal group name', default='Datalogger_acq',
+               active=pname('datalogger_ena'), active_value='Yes')
 
 
 GROUP_NAME = 'opal'
@@ -51,9 +56,12 @@ class DAS(das.DAS):
         self.params['rt_lab_version'] = self._param_value('rt_lab_version')
         self.params['sample_interval'] = self._param_value('sample_interval')
         self.params['wfm_dir'] = self._param_value('wfm_dir')
+        self.params['data_dir'] = self._param_value('data_dir')
         self.params['wfm_chan_list'] = self._param_value('wfm_chan_list')
         self.params['data_name'] = self._param_value('data_name')
         self.params['sc_capture'] = self._param_value('sc_capture')
+        self.params['datalogger_ena'] = self._param_value('datalogger_ena')
+        self.params['datalogger_signal_group_name'] = self._param_value('datalogger_signal_group_name')
         if self.hil is None:
             ts.log_warning('No HIL support interface was provided to das_opal.py. It is recommended to provide the '
                            'hil, at minimum, using "daq = das.das_init(ts, support_interfaces='
@@ -86,6 +94,23 @@ class DAS(das.DAS):
         # self.ts.log_debug('device: %s, obj: %s' % (self.device, obj))
         self.device.set_dc_measurement(obj)
 
+    def waveform_config(self, params):
+        self.device.waveform_config(params=params)
+
+    def waveform_record(self, filename=None):
+        if filename is None:
+            self.device.waveform_record()
+        else:
+            self.device.waveform_record(filename)
+
+    def waveform_stop_record(self):
+        self.device.waveform_stop_record()
+
+    def close(self):
+        pass
+
+    def waveform_capture_dataset(self, counter=None, name_dict=None):
+        self.device.waveform_capture_dataset(counter, name_dict)
 
 if __name__ == "__main__":
 
