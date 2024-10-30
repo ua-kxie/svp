@@ -86,7 +86,8 @@ class Device(object):
 
         # import based on the version number
         rt_version = self.params['rt_lab_version']
-        rt_import_path = "C://OPAL-RT//RT-LAB//%s//common//python" % rt_version
+        # rt_import_path = "C://OPAL-RT//RT-LAB//%s//common//python" % rt_version
+        rt_import_path = "%s\python" % rt_version
         try:
             sys.path.insert(0, rt_import_path)
             import RtlabApi
