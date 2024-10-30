@@ -184,7 +184,9 @@ class GridSim(gridsim.GridSim):
                 self.conn.connect((self.ipaddr, self.ipport))
 
             # print 'cmd> %s' % (cmd_str)
-            self.conn.send(cmd_str)
+            # self.conn.send(cmd_str)
+            self.ts.log(f'sending cmd: {cmd_str}')
+            self.conn.send(bytes(cmd_str, 'utf-8'))
         except Exception as e:
             raise gridsim.GridSimError(str(e))
 
@@ -196,7 +198,8 @@ class GridSim(gridsim.GridSim):
 
         while more_data:
             try:
-                data = self.conn.recv(self.buffer_size)
+                data = self.conn.recv(self.buffer_size).decode("utf-8")
+                self.ts.log(f'receiving data: {data}')
                 if len(data) > 0:
                     for d in data:
                         resp += d
