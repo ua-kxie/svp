@@ -185,7 +185,7 @@ class GridSim(gridsim.GridSim):
 
             # print 'cmd> %s' % (cmd_str)
             # self.conn.send(cmd_str)
-            self.ts.log(f'sending cmd: {cmd_str}')
+            self.ts.log(f'sent: {cmd_str}')
             self.conn.send(bytes(cmd_str, 'utf-8'))
         except Exception as e:
             raise gridsim.GridSimError(str(e))
@@ -199,7 +199,7 @@ class GridSim(gridsim.GridSim):
         while more_data:
             try:
                 data = self.conn.recv(self.buffer_size).decode("utf-8")
-                self.ts.log(f'receiving data: {data}')
+                self.ts.log(f'recv: {data}')
                 if len(data) > 0:
                     for d in data:
                         resp += d
@@ -314,6 +314,7 @@ class GridSim(gridsim.GridSim):
         # put simulator in regenerative mode
         state = self.regen()
         if state != gridsim.REGEN_ON:
+            self.ts.log(f'{self.relay()}')  # no idea why but this line fixes the logic flow below
             if self.relay() == gridsim.RELAY_CLOSED:
                 self.relay(state=gridsim.RELAY_OPEN)
             state = self.regen(gridsim.REGEN_ON)
