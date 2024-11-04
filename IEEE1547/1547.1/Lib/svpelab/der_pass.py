@@ -56,8 +56,8 @@ GROUP_NAME = 'pass'
 
 class DER(der.DER):
 
-    def __init__(self, ts, group_name):
-        der.DER.__init__(self, ts, group_name)
+    def __init__(self, ts, group_name, support_interfaces=None):
+        der.DER.__init__(self, ts, group_name, support_interfaces=support_interfaces)
 
     def info(self):
         """ Get DER device information.

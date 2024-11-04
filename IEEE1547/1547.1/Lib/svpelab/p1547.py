@@ -43,7 +43,11 @@ import collections
 import numpy as np
 import pandas as pd
 import random
-
+import pylab
+from matplotlib import lines
+from matplotlib.lines import Line2D
+import timeit
+import matplotlib.gridspec as gridspec
 # import sys
 # import os
 # import glob
@@ -52,16 +56,16 @@ import random
 VERSION = '1.4.3'
 LATEST_MODIFICATION = '13th January 2020'
 
-FW = 'FW'  # Frequency-Watt
+FW  = 'FW'   # Frequency-Watt
 CPF = 'CPF'  # Constant Power Factor
-VW = 'VW'  # Volt_Watt
-VV = 'VV'  # Volt-Var
-WV = 'WV'  # Watt-Var
+VW  = 'VW'   # Volt_Watt
+VV  = 'VV'   # Volt-Var
+WV  = 'WV'   # Watt-Var
 CRP = 'CRP'  # Constant Reactive Power
 LAP = 'LAP'  # Limit Active Power
 PRI = 'PRI'  # Priority
 IOP = 'IOP'  # Interoperability Tests
-UI = 'UI'  # Unintentional Islanding Tests
+UI  = 'UI'   # Unintentional Islanding Tests
 
 LV = 'LV'
 HV = 'HV'
@@ -74,8 +78,8 @@ FULL_NAME = {'V': 'Voltage',
              'Q': 'Reactive Power',
              'F': 'Frequency',
              'PF': 'Power Factor'}
-LFRT = "LFRT"
-HFRT = "HFRT"
+LFRT = "LFRT"  # Low Frequency Ride Through
+HFRT = "HFRT"  # High Frequency Ride Through
 
 
 class p1547Error(Exception):
@@ -91,6 +95,7 @@ def VersionValidation(script_version):
     if script_version != VERSION:
         raise p1547Error(f'Error in p1547 library version is {VERSION} while script version is {script_version}.'
                          f'Update library and script version accordingly.')
+
 
 
 class EutParameters(object):
@@ -199,7 +204,7 @@ class UtilParameters:
 
     def set_step_label(self, starting_label=None):
         """
-        Write step labels in alphabetical order as shown in the standard
+        Write step labels of the test in alphabetical order as shown in the standard
         :param starting_label:
         :return: nothing
         """
@@ -210,10 +215,10 @@ class UtilParameters:
         starting_label_value = ord(starting_label)
         self.step_label = starting_label_value
 
+
     """
     Getter functions
     """
-
     def get_params(self, function, curve=None):
 
         if curve == None:
@@ -223,7 +228,8 @@ class UtilParameters:
 
     def get_step_label(self):
         """
-        get the step labels and increment in alphabetical order as shown in the standard
+        Get the step labels and increment in alphabetical order as shown in the standard
+        After z, we get aa , bb, ...
         :param: None
         :return: nothing
         """
@@ -266,6 +272,7 @@ class DataLogging:
         self.initial_value = {}
         self.tr_value = collections.OrderedDict()
         self.current_step_label = None
+        self.daq = None
 
     # def __config__(self):
 
@@ -273,7 +280,10 @@ class DataLogging:
         self.tr = tr
         self.ts.log_debug(f'P1547 Time response has been set to {self.tr} seconds')
         self.n_tr = number_tr
-        self.ts.log_debug(f'P1547 Number of Time response has been set to {self.n_tr} cycles')
+        #self.ts.log_debug(f'P1547 Number of Time response has been set to {self.n_tr} cycles')
+
+    def set_daq(self, daq):
+        self.daq = daq
 
     def set_sc_points(self):
         """
@@ -289,7 +299,7 @@ class DataLogging:
         row_data = []
 
         for meas_value in self.meas_values:
-            row_data.append('%s_MEAS' % meas_value)
+
 
             if meas_value in xs:
                 row_data.append('%s_TARGET' % meas_value)
@@ -299,7 +309,9 @@ class DataLogging:
                 row_data.append('%s_TARGET_MIN' % meas_value)
                 row_data.append('%s_TARGET_MAX' % meas_value)
 
-        row_data.append('EVENT')
+            row_data.append('%s_MEAS' % meas_value)
+
+        row_data.append('event')
         self.ts.log_debug('Sc points: %s' % row_data)
         self.sc_points['sc'] = row_data
 
@@ -422,6 +434,9 @@ class DataLogging:
         """
         value = None
         nb_phases = None
+
+        self.data = self.daq.data_capture_read()
+
         self.ts.log_debug(self.data.get(self.get_measurement_label(type_meas)[0]))
         try:
             if self.phases == 'Single phase':
@@ -457,7 +472,7 @@ class DataLogging:
             elif type_meas == 'F':
                 # No need to do data average for frequency
                 value = self.data.get(self.get_measurement_label(type_meas)[0])
-            return round(value, 3)
+            return round(value, 4)
 
         except Exception as e:
             self.ts.log_error('Inverter phase parameter not set correctly.')
@@ -507,10 +522,11 @@ class DataLogging:
                 row_data.append(str(self.tr_value['%s_TR_TARG_%d' % (meas_value, last_iter)]))
             # Variables needed for criteria verifications with min max passfail
             if meas_value in ys:
-                row_data.append(str(self.tr_value['%s_TR_TARG_%s' % (meas_value, last_iter)]))
-                row_data.append(str(self.tr_value['%s_TR_%s_MIN' % (meas_value, last_iter)]))
-                row_data.append(str(self.tr_value['%s_TR_%s_MAX' % (meas_value, last_iter)]))
+                row_data.append(str(round(self.tr_value['%s_TR_TARG_%s' % (meas_value, last_iter)], 3)))
+                row_data.append(str(round(self.tr_value['%s_TR_%s_MIN' % (meas_value, last_iter)], 3)))
+                row_data.append(str(round(self.tr_value['%s_TR_%s_MAX' % (meas_value, last_iter)], 3)))
 
+        self.ts.log_debug(f'Writing Event into rslt_summary = {self.current_step_label}')
         row_data.append(self.current_step_label)
         row_data.append(str(self.filename))
         # self.ts.log_debug(f'rowdata={row_data}')
@@ -521,7 +537,7 @@ class DataLogging:
         # except Exception as e:
         #     raise p1547Error('Error in write_rslt_sum() : %s' % (str(e)))
 
-    def start(self, daq, step_label):
+    def start(self, step_label):
         """
         Sum the EUT reactive power from all phases
         :param daq:         data acquisition object from svpelab library
@@ -533,36 +549,37 @@ class DataLogging:
 
         self.initial_value['timestamp'] = datetime.now()
         self.current_step_label = step_label
-        daq.data_sample()
-        self.data = daq.data_capture_read()
-        daq.sc['event'] = self.current_step_label
+        self.daq.sc['event'] = self.current_step_label
+        self.daq.data_sample()
+        self.data = self.daq.data_capture_read()
+
         if isinstance(self.x_criteria, list):
             for xs in self.x_criteria:
                 self.initial_value[xs] = {'x_value': self.get_measurement_total(type_meas=xs, log=False)}
-                daq.sc['%s_MEAS' % xs] = self.initial_value[xs]['x_value']
+                self.daq.sc['%s_MEAS' % xs] = self.initial_value[xs]['x_value']
         else:
             self.initial_value[self.x_criteria] = {
                 'x_value': self.get_measurement_total(type_meas=self.x_criteria, log=False)}
-            daq.sc['%s_MEAS' % self.x_criteria] = self.initial_value[self.x_criteria]['x_value']
+            self.daq.sc['%s_MEAS' % self.x_criteria] = self.initial_value[self.x_criteria]['x_value']
 
         if isinstance(self.y_criteria, dict):
             for ys in list(self.y_criteria.keys()):
                 self.initial_value[ys] = {'y_value': self.get_measurement_total(type_meas=ys, log=False)}
-                daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
+                self.daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
         else:
             self.initial_value[self.y_criteria] = {
                 'y_value': self.get_measurement_total(type_meas=self.y_criteria, log=False)}
-            daq.sc['%s_MEAS' % self.y_criteria] = self.initial_value[self.y_criteria]['y_value']
+            self.daq.sc['%s_MEAS' % self.y_criteria] = self.initial_value[self.y_criteria]['y_value']
 
         """
         elif isinstance(self.y_criteria, list):
             for ys in self.y_criteria:
                 self.initial_value[ys] = {'y_value': self.get_measurement_total(data=data, type_meas=ys, log=False)}
-                daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
+                self.daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
         """
-        daq.data_sample()
+        self.daq.data_sample()
 
-    def record_timeresponse(self, daq):
+    def record_timeresponse(self):
         """
         Get the data from a specific time response (tr) corresponding to x and y values returns a dictionary
         but also writes in the soft channels of the DAQ system
@@ -603,18 +620,20 @@ class DataLogging:
                 self.ts.log('Waiting %s seconds to get the next Tr data for analysis...' %
                             time_to_sleep.total_seconds())
                 self.ts.sleep(time_to_sleep.total_seconds())
-            daq.data_sample()  # sample new data
-            data = daq.data_capture_read()  # Return dataset created from last data capture
-            daq.sc['EVENT'] = "{0}_TR_{1}".format(self.current_step_label, tr_iter)
+            self.daq.sc['event'] = "{0}_TR_{1}".format(self.current_step_label, tr_iter)
+            #self.define_target(y_criterias_mod=y_criterias_mod)
+            self.daq.data_sample()  # sample new data
+            data = self.daq.data_capture_read()  # Return dataset created from last data capture
 
-            # update daq.sc values for Y_TARGET, Y_TARGET_MIN, and Y_TARGET_MAX
 
-            # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
+            # update self.daq.sc values for Y_TARGET, Y_TARGET_MIN, and Y_TARGET_MAX
+
+            # store the self.daq.sc['Y_TARGET'], self.daq.sc['Y_TARGET_MIN'], and self.daq.sc['Y_TARGET_MAX'] in tr_value
             for meas_value in self.meas_values:
                 try:
-                    self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = daq.sc['%s_MEAS' % meas_value]
+                    self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = self.get_measurement_total(meas_value) #self.daq.sc['%s_MEAS' % meas_value]
 
-                    self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                    self.ts.log('Value %s: %s' % (meas_value, self.daq.sc['%s_MEAS' % meas_value]))
 
                 except Exception as e:
                     self.ts.log_error('Test script exception: %s' % traceback.format_exc())
@@ -637,7 +656,7 @@ class CriteriaValidation:
     def __init__(self, criteria_mode):
         self.criteria_mode = criteria_mode
 
-    def define_target(self, daq, step_dict=None, y_criterias_mod=None):
+    def define_target(self, y_criterias_mod=None):
         """
         Get the data from a specific time response (tr) corresponding to x and y values returns a dictionary
         but also writes in the soft channels of the DAQ system
@@ -651,7 +670,6 @@ class CriteriaValidation:
 
         :return: returns a dictionary with the timestamp, event and total EUT reactive power
         """
-
         x = self.x_criteria
         y_criteria = self.y_criteria
 
@@ -660,52 +678,53 @@ class CriteriaValidation:
 
         y = list(y_criteria.keys())
         # self.tr = tr
-        self.ts.log_debug(f'daq={daq.sc}')
+        self.ts.log_debug(f'daq={self.daq.sc}')
         for tr_iter in range(self.n_tr + 1):
             self.ts.log_debug(f'tr_iter={tr_iter}')
-            # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
+            # store the self.daq.sc['Y_TARGET'], self.daq.sc['Y_TARGET_MIN'], and self.daq.sc['Y_TARGET_MAX'] in tr_value
             for meas_value in self.meas_values:
                 try:
                     if meas_value in x:
 
                         if (self.step_dict is not None) and (meas_value in list(self.step_dict.keys())):
                             self.ts.log_debug(f'step_dict')
-                            daq.sc['%s_TARGET' % meas_value] = self.step_dict[meas_value]
+                            self.daq.sc['%s_TARGET' % meas_value] = self.step_dict[meas_value]
                             self.tr_value['%s_TR_TARG_%s' % (meas_value, tr_iter)] = self.step_dict[meas_value]
                             self.ts.log_debug(f'tr_targ={self.tr_value["%s_TR_TARG_%s" % (meas_value, tr_iter)]}')
-                            self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                            self.ts.log('X Value (%s) = %s' % (meas_value, self.daq.sc['%s_MEAS' % meas_value]))
 
                     elif meas_value in y:
                         if self.step_dict is not None:
                             # self.ts.log_debug(f'meas={meas_value} et step_dict={self.step_dict}')
                             self.ts.log_debug(f'function={y_criteria[meas_value]}')
 
-                            daq.sc['%s_TARGET' % meas_value] = self.update_target_value(function=y_criteria[meas_value])
-                            daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value] = \
+                            self.daq.sc['%s_TARGET' % meas_value] = self.update_target_value(function=y_criteria[meas_value], step_dict = self.step_dict)
+                            self.daq.sc['%s_TARGET_MIN' % meas_value], self.daq.sc['%s_TARGET_MAX' % meas_value] = \
                                 self.calculate_min_max_values(function=y_criteria[meas_value])
 
                         else:
-                            daq.sc['%s_TARGET' % meas_value] = self.update_target_value(value=step_value,
-                                                                                        function=self.y_criteria[
-                                                                                            meas_value])
-                            daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value] = \
-                                self.calculate_min_max_values(function=y_criteria[meas_value], step_dict=step_dict)
-                        self.tr_value[f'{meas_value}_TR_TARG_{tr_iter}'] = daq.sc['%s_TARGET' % meas_value]
-                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
-                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            #self.ts.log_debug(f'********step_dict is empty = {step_dict}')
+
+                            self.daq.sc['%s_TARGET' % meas_value] = self.update_target_value(value=step_dict,
+                                                                                        function=self.y_criteria[meas_value])
+                            self.daq.sc['%s_TARGET_MIN' % meas_value], self.daq.sc['%s_TARGET_MAX' % meas_value] = \
+                                self.calculate_min_max_values(function=y_criteria[meas_value])
+                        self.daq.sc['%s_MEAS' % meas_value] = self.get_measurement_total(type_meas=meas_value, log=False)
+                        self.tr_value[f'{meas_value}_TR_TARG_{tr_iter}'] = self.daq.sc['%s_TARGET' % meas_value]
+                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MIN'] = self.daq.sc['%s_TARGET_MIN' % meas_value]
+                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MAX'] = self.daq.sc['%s_TARGET_MAX' % meas_value]
                         self.ts.log_debug(f"{meas_value}_TR_TARG_{tr_iter}")
                         self.ts.log_debug(f'tr_target={self.tr_value[f"{meas_value}_TR_TARG_{tr_iter}"]}')
                         self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
-                                    (meas_value, daq.sc['%s_MEAS' % meas_value],
-                                     daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
+                                    (meas_value, self.daq.sc['%s_MEAS' % meas_value],
+                                     self.daq.sc['%s_TARGET_MIN' % meas_value], self.daq.sc['%s_TARGET_MAX' % meas_value]))
                 except Exception as e:
                     self.ts.log_error('Test script exception: %s' % traceback.format_exc())
                     self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
 
     def update_target_value(self, function, value=None, step_dict=None):
-
-        step_dict = self.step_dict
-
+        #step_dict = self.step_dict
+        #self.ts.log_debug(f'Step_dict in update_target_value={step_dict}')
         if function == VV:
             vv_pairs = self.get_params(function=VV, curve=self.curve)
             x = [vv_pairs['V1'], vv_pairs['V2'],
@@ -729,14 +748,22 @@ class CriteriaValidation:
                 p_value = float(np.interp(step_dict['V'], x, y))
             else:
                 p_value = float(np.interp(value, x, y))
+            if p_value < self.p_min:
+                p_value = self.p_min
             p_value *= self.pwr
-            self.ts.log_debug(f'p_value={p_value}')
+
+            #self.ts.log_debug(f'p_value={p_value}')
             return round(p_value, 1)
 
         if function == CPF:
-            # self.ts.log_debug(f'CPF target calculation')
+            # #self.ts.log_debug(f'CPF target calculation')
+            sign = None
+            if step_dict['PF'] > 0:
+                sign = -1.0
+            else:
+                sign = 1.0
             q_value = math.sqrt(pow(step_dict['P'], 2) * ((1 / pow(step_dict['PF'], 2)) - 1))
-            return q_value
+            return q_value * sign
 
         if function == CRP:
             # self.ts.log_debug(f'CRP target calculation')
@@ -744,12 +771,22 @@ class CriteriaValidation:
             return round(q_value, 1)
 
         if function == WV:
-            # self.ts.log_debug(f'WV target calculation')
+            # #self.ts.log_debug(f'WV target calculation')
+            if value is not None:
+                step_dict['P'] = value
             x = [self.param[WV][self.curve]['P1'], self.param[WV][self.curve]['P2'], self.param[WV][self.curve]['P3']]
             y = [self.param[WV][self.curve]['Q1'], self.param[WV][self.curve]['Q2'], self.param[WV][self.curve]['Q3']]
+            if step_dict['P'] < self.p_min:
+                step_dict['P'] = self.p_min
+            elif step_dict['P'] > self.p_rated:
+                step_dict['P'] = self.p_rated
+
+            #step_dict['P'] = step_dict['P']/self.p_rated
+            self.ts.log_debug(f'p_meas={step_dict}')
+            #q_value = float(np.interp(value, x, y))
             q_value = float(np.interp(step_dict['P'], x, y))
             q_value *= self.pwr
-            self.ts.log_debug('Power value: %s --> q_target: %s' % (value, q_value))
+            self.ts.log_debug('Power value: %s --> q_target: %s' % (step_dict['P'], q_value))
             return q_value
 
         if function == FW:
@@ -804,6 +841,7 @@ class CriteriaValidation:
 
         if function == VV:
             v_meas = self.get_measurement_total(type_meas='V', log=False)
+            #self.ts.log_debug(f'For VV, v_meas={v_meas}--MRAV={self.MRA["V"]}--MRAQ={self.MRA["Q"]}')
             target_min = self.update_target_value(value=v_meas + self.MRA['V'] * 1.5, function=VV) - (
                         self.MRA['Q'] * 1.5)
             target_max = self.update_target_value(value=v_meas - self.MRA['V'] * 1.5, function=VV) + (
@@ -832,6 +870,7 @@ class CriteriaValidation:
         elif function == WV:
             p_meas = self.get_measurement_total(type_meas='P', log=False)
             # q_meas = self.get_measurement_total(data=data, type_meas='Q', log=False)
+            self.ts.log_debug(f'P_meas for WV_target = {p_meas}')
             step_min = {'P': p_meas + self.MRA['P'] * 1.5}
             step_max = {'P': p_meas - self.MRA['P'] * 1.5}
             target_min = self.update_target_value(step_dict=step_min, function=WV) - (self.MRA['Q'] * 1.5)
@@ -850,10 +889,10 @@ class CriteriaValidation:
 
         return target_min, target_max
 
-    def evaluate_criterias(self, daq, step_dict=None, y_criterias_mod=None):
+    def evaluate_criterias(self, step_dict=None, y_criterias_mod=None):
 
         self.step_dict = step_dict
-        self.define_target(daq=daq, y_criterias_mod=y_criterias_mod)
+        self.define_target(y_criterias_mod=y_criterias_mod)
 
         if self.criteria_mode[0]:
             self.open_loop_resp_criteria()
@@ -1119,8 +1158,12 @@ class HilModel(object):
         self.stop_time = None
         if support_interfaces.get('hil') is not None:
             self.hil = support_interfaces.get('hil')
+            self.ts.log(f"P1547 has a hil support_interfaces : {self.hil}")
+
         else:
             self.hil = None
+            self.ts.log(f"P1547 has no hil support_interfaces")
+
         self.set_time_path()
         self.set_nominal_values()
         #self.set_input_scale_offset()
@@ -1201,6 +1244,8 @@ class VoltVar(EutParameters, UtilParameters):
         Function to set VV curves points
         :return:
         """
+
+        # From Table 25 IEEE Std 1547.1-2020 - Categorie B
         self.param[VV] = {}
         self.param[VV][1] = {
             'V1': round(0.92 * self.v_nom, 2),
@@ -1214,6 +1259,7 @@ class VoltVar(EutParameters, UtilParameters):
             'TR': 5.0
         }
 
+        # From Table 26 IEEE Std 1547.1-2020 - Categorie B
         self.param[VV][2] = {
             'V1': round(0.88 * self.v_nom, 2),
             'V2': round(1.04 * self.v_nom, 2),
@@ -1225,6 +1271,8 @@ class VoltVar(EutParameters, UtilParameters):
             'Q4': round(self.var_rated * -1.0, 2),
             'TR': 1.0
         }
+
+        # From Table 27 IEEE Std 1547.1-2020 - Categorie B
         self.param[VV][3] = {
             'V1': round(0.90 * self.v_nom, 2),
             'V2': round(0.93 * self.v_nom, 2),
@@ -1237,52 +1285,59 @@ class VoltVar(EutParameters, UtilParameters):
             'TR': 90.0
         }
 
-    def create_vv_dict_steps(self, v_ref, mode='Normal'):
+    def create_vv_dict_steps(self, mode='Normal', ul1547=None):
         """
         Function to create dictionnary depending on which mode volt-watt is running
         :param mode: string [None, Volt-Var, etc]
         :return: Voltage step dictionnary
         """
-
+        v_ref = self.running_test_script_parameters["VREF"]
         v_steps_dict = collections.OrderedDict()
         a_v = self.MRA['V'] * 1.5
         v_pairs = self.get_params(function=VV, curve=self.curve)
         self.set_step_label(starting_label='G')
-        if mode == 'Vref-test':
+        if mode == 'Vref-test':             # IEEE Std 1547.1-2020 - Section 5.14.5
             pass
-        elif mode == 'Imbalanced grid':
+        elif mode == 'Imbalanced grid':     # IEEE Std 1547.1-2020 - Section 5.14.6
             pass
             # TODO to be decided if we can put imbalanced steps in here
-        else:
+        else:                               # IEEE Std 1547.1-2020 - Section 5.14.4
+
             # Capacitive test
-            # Starting from step F
-            v_steps_dict[self.get_step_label()] = v_pairs['V3'] - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V3'] + a_v
-            v_steps_dict[self.get_step_label()] = (v_pairs['V3'] + v_pairs['V4']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V4'] - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V4'] + a_v
-            v_steps_dict[self.get_step_label()] = self.v_high - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V4'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V4'] - a_v
-            v_steps_dict[self.get_step_label()] = (v_pairs['V3'] + v_pairs['V4']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V3'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V3'] - a_v
-            v_steps_dict[self.get_step_label()] = v_ref * self.v_nom
+            v_steps_dict[self.get_step_label()] = v_pairs['V3'] - a_v                   # Step G
+            v_steps_dict[self.get_step_label()] = v_pairs['V3'] + a_v                   # Step H
+            v_steps_dict[self.get_step_label()] = (v_pairs['V3'] + v_pairs['V4']) / 2   # Step I
+            v_steps_dict[self.get_step_label()] = v_pairs['V4'] - a_v                   # Step J
+            v_steps_dict[self.get_step_label()] = v_pairs['V4'] + a_v                   # Step K
+            v_steps_dict[self.get_step_label()] = self.v_high - a_v                     # Step L
+            v_steps_dict[self.get_step_label()] = v_pairs['V4'] + a_v                   # Step M
+            v_steps_dict[self.get_step_label()] = v_pairs['V4'] - a_v                   # Step N
+            v_steps_dict[self.get_step_label()] = (v_pairs['V3'] + v_pairs['V4']) / 2   # Step O
+            v_steps_dict[self.get_step_label()] = v_pairs['V3'] + a_v                   # Step P
+            v_steps_dict[self.get_step_label()] = v_pairs['V3'] - a_v                   # Step Q
+            v_steps_dict[self.get_step_label()] = v_ref * self.v_nom                    # Step R
+            if ul1547 is None:
+                v_steps_dict[self.get_step_label()] = v_ref * self.v_nom
+            else:
+                v_steps_dict[self.get_step_label()] = self.v_nom
 
             # Inductive test
-            # Step S
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v
-            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v
-            v_steps_dict[self.get_step_label()] = self.v_low + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v
-            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v
-            v_steps_dict[self.get_step_label()] = v_ref * self.v_nom
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v                   # Step S
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v                   # Step T
+            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2   # Step U
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v                   # Step V
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v                   # Step W
+            v_steps_dict[self.get_step_label()] = self.v_low + a_v                      # Step X
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v                   # Step Y
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v                   # Step Z
+            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2   # Step AA
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v                   # Step BB
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v                   # Step CC
+            v_steps_dict[self.get_step_label()] = v_ref * self.v_nom                    # Step DD
+            if ul1547 is None:
+                v_steps_dict[self.get_step_label()] = v_ref * self.v_nom
+            else:
+                v_steps_dict[self.get_step_label()] = self.v_nom
 
             for step, target in v_steps_dict.items():
                 v_steps_dict.update({step: round(target, 2)})
@@ -1293,7 +1348,7 @@ class VoltVar(EutParameters, UtilParameters):
 
                 # Skips steps when V4 is higher than Vmax of EUT
             if v_pairs['V4'] > self.v_high:
-                self.ts.log_debug('Since V4 is higher than Vmax, Skipping a few steps')
+                #self.ts.log_debug('Since V4 is higher than Vmax, Skipping a few steps')
                 del v_steps_dict['Step J']
                 del v_steps_dict['Step K']
                 del v_steps_dict['Step M']
@@ -1311,7 +1366,22 @@ class VoltVar(EutParameters, UtilParameters):
             return v_steps_dict
 
 
+
+"""
+This class implements the Volt-Watt functionality as described in IEEE 1547.1-2020 Section 5.14.9.
+
+The `create_vw_dict_steps()` method generates a dictionary of voltage steps to be used in the Volt-Watt test. 
+The method takes an optional `mode` parameter to specify whether the Volt-Watt is operating under normal or imbalanced grid conditions.
+The method returns an ordered dictionary of voltage steps, with the voltage values rounded to 2 decimal places and clamped to the EUT's 
+voltage limits.
+
+The `set_params()` method sets the parameters for the Volt-Watt curves based on the values specified in Tables 31, 32, and 33 of 
+IEEE 1547.1-2020. The method also adjusts the minimum power parameter based on the EUT's capabilities.
+"""
 class VoltWatt(EutParameters, UtilParameters):
+    """
+    From IEEE 1547.1-2020 - Section 5.14.9
+    """
     meas_values = ['V', 'Q', 'P']
     x_criteria = ['V']
     y_criteria = {'P': VW}
@@ -1330,8 +1400,7 @@ class VoltWatt(EutParameters, UtilParameters):
 
     def set_params(self):
         """
-        Function to set VW curves points
-        :return:
+        Function to set VW curves points from Table 31, 32 and 33
         """
         self.param[VW] = {}
         self.param[VW][1] = {
@@ -1362,6 +1431,7 @@ class VoltWatt(EutParameters, UtilParameters):
             self.param[VW][2]['P2'] = int(self.p_min)
             self.param[VW][3]['P2'] = int(self.p_min)
         if self.absorb == 'Yes':
+            # Overwrite P2 if mode inverter can absorb power
             self.param[VW][1]['P2'] = 0
             self.param[VW][2]['P2'] = self.p_rated_prime
             self.param[VW][3]['P2'] = self.p_rated_prime
@@ -1381,22 +1451,22 @@ class VoltWatt(EutParameters, UtilParameters):
             v_pairs = self.get_params(curve=self.curve, function=VW)
             a_v = self.MRA['V'] * 1.5
 
-            # Step G
-            v_steps_dict[self.get_step_label()] = self.v_low + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v
-            v_steps_dict[self.get_step_label()] = (v_pairs['V2'] + v_pairs['V1']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v
-            # Step K
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v
-            v_steps_dict[self.get_step_label()] = self.v_high - a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v
-            # Step P
-            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v
-            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v
-            v_steps_dict[self.get_step_label()] = self.v_low + a_v
+            
+            v_steps_dict[self.get_step_label()] = self.v_low + a_v                      # Step G
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v                   # Step H
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v                   # Step I
+            v_steps_dict[self.get_step_label()] = (v_pairs['V2'] + v_pairs['V1']) / 2   # Step J
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v                   # Step K
+            
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v                   # Step L
+            v_steps_dict[self.get_step_label()] = self.v_high - a_v                     # Step M
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] + a_v                   # Step N
+            v_steps_dict[self.get_step_label()] = v_pairs['V2'] - a_v                   # Step O
+            
+            v_steps_dict[self.get_step_label()] = (v_pairs['V1'] + v_pairs['V2']) / 2   # Step P
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] + a_v                   # Step Q
+            v_steps_dict[self.get_step_label()] = v_pairs['V1'] - a_v                   # Step R
+            v_steps_dict[self.get_step_label()] = self.v_low + a_v                      # Step S
 
             if v_pairs['V2'] > self.v_high:
                 del v_steps_dict['Step K']
@@ -1421,6 +1491,9 @@ class VoltWatt(EutParameters, UtilParameters):
 
 
 class ConstantPowerFactor(EutParameters, UtilParameters):
+    """
+    From IEEE 1547.1-2020 - Section 5.14.3
+    """
     meas_values = ['V', 'P', 'Q', 'PF']
     x_criteria = ['V', 'P']
     y_criteria = {'Q': CPF}
@@ -1434,6 +1507,9 @@ class ConstantPowerFactor(EutParameters, UtilParameters):
 
 
 class ConstantReactivePower(EutParameters, UtilParameters):
+    """
+    From IEEE 1547.1-2020 - Section 5.14.8
+    """
     meas_values = ['V', 'Q', 'P']
     x_criteria = ['V']
     y_criteria = {'Q': CRP}
@@ -1447,6 +1523,9 @@ class ConstantReactivePower(EutParameters, UtilParameters):
 
 
 class FrequencyWatt(EutParameters, UtilParameters):
+    """
+    From IEEE 1547.1-2020 - Section 5.15.2
+    """
     meas_values = ['F', 'P']
     x_criteria = ['F']
     y_criteria = {'P': FW}
@@ -1486,6 +1565,17 @@ class FrequencyWatt(EutParameters, UtilParameters):
             'TR': tr_2,
             'f_small': p_small * self.f_nom * 0.02
         }
+        if self.ts.param_value('fw.test_3_tr') is None:
+            # Based on table 35 and category III
+            tr_3 = 10.0
+        else:
+            tr_3 = self.ts.param_value('fw.test_3_tr')
+        self.param[FW][3] = {
+            'dbf': 1.0,
+            'kof': 0.05,
+            'TR': tr_3,
+            'f_small': p_small * self.f_nom * 0.02
+        }
 
     def create_fw_dict_steps(self, mode):
         a_f = self.MRA['F'] * 1.5
@@ -1496,15 +1586,15 @@ class FrequencyWatt(EutParameters, UtilParameters):
         self.set_step_label(starting_label='G')
         if mode == 'Above':  # 1547.1 (5.15.2.2):
             f_steps_dict[mode] = {}
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) + a_f
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) - a_f
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) + a_f
-            f_steps_dict[mode][self.get_step_label()] = fw_param['f_small'] + f_nom + fw_param['dbf']
+            f_steps_dict[mode][self.get_step_label()] =  f_nom                                          # Step G          
+            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) - a_f                 # Step H                 
+            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) + a_f                 # Step I
+            f_steps_dict[mode][self.get_step_label()] = fw_param['f_small'] + f_nom + fw_param['dbf']   # Step J    
             # STD_CHANGE : step k) should consider the accuracy
-            f_steps_dict[mode][self.get_step_label()] = self.f_max - a_f
-            f_steps_dict[mode][self.get_step_label()] = self.f_max - fw_param['f_small']
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) + a_f
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) - a_f
+            f_steps_dict[mode][self.get_step_label()] = self.f_max - a_f                                # Step K                   
+            f_steps_dict[mode][self.get_step_label()] = self.f_max - fw_param['f_small']                # Step L
+            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) + a_f                 # Step M
+            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) - a_f                 # Step N
             f_steps_dict[mode][self.get_step_label()] = f_nom
 
             for step, frequency in f_steps_dict[mode].items():
@@ -1513,17 +1603,19 @@ class FrequencyWatt(EutParameters, UtilParameters):
                     self.ts.log("{0} frequency step (value : {1}) changed to fH (f_max)".format(step, frequency))
                     f_steps_dict[mode].update({step: self.f_max})
 
-        elif mode == 'Below':  # 1547.1 (5.15.3.2):
+        elif mode == 'Below':  # 1547.1 (5.15.3.2):                                 # Below Nominal Frequency   
             f_steps_dict[mode] = {}
-            f_steps_dict[mode][self.get_step_label()] = (f_nom + fw_param['dbf']) - a_f
-            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) - a_f
-            f_steps_dict[mode][self.get_step_label()] = f_nom - fw_param['f_small'] - fw_param['dbf']
-            # STD_CHANGE : step j) should consider the accuracy
-            f_steps_dict[mode][self.get_step_label()] = self.f_min + a_f
-            f_steps_dict[mode][self.get_step_label()] = self.f_min + fw_param['f_small']
-            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) - a_f
-            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) + a_f
-            f_steps_dict[mode][self.get_step_label()] = f_nom
+            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) + a_f                 # Step G 
+            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) - a_f                 # Step H 
+            f_steps_dict[mode][self.get_step_label()] = f_nom - fw_param['f_small'] - fw_param['dbf']   
+
+            # STD_CHANGE : step j) should consider the accuracy 
+            f_steps_dict[mode][self.get_step_label()] = self.f_min + a_f                                # Step I
+            f_steps_dict[mode][self.get_step_label()] = self.f_min + fw_param['f_small']                # Step K
+            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) - a_f                 # Step L                    
+            f_steps_dict[mode][self.get_step_label()] = (f_nom - fw_param['dbf']) + a_f                 # Step M
+            f_steps_dict[mode][self.get_step_label()] = f_nom                                           # Step N 
+
 
             for step, frequency in f_steps_dict[mode].items():
                 f_steps_dict[mode].update({step: np.around(frequency, 3)})
@@ -1648,26 +1740,35 @@ class WattVar(EutParameters, UtilParameters):
         self.set_step_label(starting_label='G')
         a_p = self.MRA['P'] * 1.5
         p_steps_dict[self.get_step_label()] = self.p_min
+        if (p_pairs['P1'] - a_p) < self.p_min :
+            lowest_p_value = self.p_min
+        else:
+            lowest_p_value = p_pairs['P1'] - a_p
+        if (p_pairs['P3'] + a_p) > self.p_rated :
+            highest_p_value = self.p_rated
+        else:
+            highest_p_value = p_pairs['P3'] + a_p
 
-        p_steps_dict[self.get_step_label()] = p_pairs['P1'] - a_p
+
+        p_steps_dict[self.get_step_label()] = lowest_p_value
         p_steps_dict[self.get_step_label()] = p_pairs['P1'] + a_p
         p_steps_dict[self.get_step_label()] = (p_pairs['P1'] + p_pairs['P2']) / 2
         p_steps_dict[self.get_step_label()] = p_pairs['P2'] - a_p
         p_steps_dict[self.get_step_label()] = p_pairs['P2'] + a_p
         p_steps_dict[self.get_step_label()] = (p_pairs['P2'] + p_pairs['P3']) / 2
         p_steps_dict[self.get_step_label()] = p_pairs['P3'] - a_p
-        p_steps_dict[self.get_step_label()] = p_pairs['P3'] + a_p
+        p_steps_dict[self.get_step_label()] = highest_p_value
         p_steps_dict[self.get_step_label()] = self.p_rated
 
         # Begin the return to Pmin
-        p_steps_dict[self.get_step_label()] = p_pairs['P3'] + a_p
+        p_steps_dict[self.get_step_label()] = highest_p_value
         p_steps_dict[self.get_step_label()] = p_pairs['P3'] - a_p
         p_steps_dict[self.get_step_label()] = (p_pairs['P2'] + p_pairs['P3']) / 2
         p_steps_dict[self.get_step_label()] = p_pairs['P2'] + a_p
         p_steps_dict[self.get_step_label()] = p_pairs['P2'] - a_p
         p_steps_dict[self.get_step_label()] = (p_pairs['P1'] + p_pairs['P2']) / 2
         p_steps_dict[self.get_step_label()] = p_pairs['P1'] + a_p
-        p_steps_dict[self.get_step_label()] = p_pairs['P1'] - a_p
+        p_steps_dict[self.get_step_label()] = lowest_p_value
         p_steps_dict[self.get_step_label()] = self.p_min
 
         return p_steps_dict
@@ -1788,6 +1889,8 @@ class ActiveFunction(DataLogging, CriteriaValidation, ImbalanceComponent, VoltWa
 
         self.ts.log(f'Functions to be activated in this test script = {functions}')
 
+        self.running_test_script_parameters = {}
+
         if VW in functions:
             VoltWatt.__init__(self, ts)
             x_criterias += VoltWatt.x_criteria
@@ -1896,23 +1999,21 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
 
     def set_vrt_model_parameters(self, test_sequence):
         parameters = []
+        # if "A" in phase_combination_label:
+        #     parameters.append(("VRT_PHA_ENABLE", 1.0))
+        # if "B" in phase_combination_label:
+        #     parameters.append(("VRT_PHB_ENABLE", 1.0))
+        # if "C" in phase_combination_label:
+        #     parameters.append(("VRT_PHC_ENABLE", 1.0))
 
         # Enable VRT mode in the IEEE1547_fast_functions model
         parameters.append(("MODE", 3.0))
 
-        # Add ROCOM only for LVRT CAT II
-        for test_set in str(test_sequence).splitlines():
-            self.ts.log_debug(test_set)
-        # if self.params["lv_mode"] == 'Enabled' and
-        #     (self.params["categories"] == CAT_2 or self.params["categories"] == 'Both'):
-        #     parameters.append(("ROCOF_ENABLE", 1))
-        #     parameters.append(("ROCOF_VALUE", 0.115))
-        #     parameters.append(("ROCOF_INIT", test_sequence.loc["D"]["Voltage"].item()))
-        #     parameters.append(("ROCOM_START_TIME", test_conditionc.loc["E"]["StartTime"].item()))
-        #     parameters.append(("ROCOM_END_TIME", test_conditionc.loc["E"]["StopTime"]))
+        
+        CLEARING_STEPS = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
-        # We need to do some padding because of RT-compilation allow a fixe size.
-        # In our case, with pad with 0 a vector size of 20. This will tell the state machine the final value.
+        clearing_steps_list = self.extend_list_end(CLEARING_STEPS, 0.0, 20)
+        parameters.append(("CLEARING_STEPS", clearing_steps_list))
 
         vrt_condition_list = self.extend_list_end(test_sequence["VRT_CONDITION"].to_list(), 0.0, 20)
         parameters.append(("VRT_CONDITION", vrt_condition_list))
@@ -1929,7 +2030,7 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
 
     def set_phase_combination(self, phase):
         parameters = []
-
+        self.ts.log_debug(f"set_phase_combination : {phase}")
         for ph in phase:
             parameters.append((f"VRT_PH{ph}_ENABLE", 1.0))
         self.hil.set_matlab_variables(parameters)
@@ -2050,7 +2151,7 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
         3.0         120.0        1.05             188.0           308.0
 
         Note: The Test condition value is directly connected to the alphabetical order.
-        The value 1.0 is for A, 2.0 is for B and so on. When a prime is present, we 
+        The value 1.0 is for A, 2.0 is for B and so on. When a prime is present, we
         just add the value 10.0. The value 12.0 is for B', 13 is for C' and so on.
         The idea is just to show this on the data.
         '''
@@ -2092,7 +2193,7 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
                 test_sequences_df = test_sequences_df.append(test_condition["F"], ignore_index=True)
 
             else:
-                # ABCDEF 
+                # ABCDEF
                 test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
                 test_sequences_df = test_sequences_df.append(test_condition["B"], ignore_index=True)
                 test_sequences_df = test_sequences_df.append(test_condition["C"], ignore_index=True)
@@ -2200,7 +2301,7 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
                 self.params["categories"] == CAT_3 or self.params["categories"] == 'Both'):
             modes.append(f"{HV}_{CAT_3}")
         self.params["modes"] = modes
-        self.ts.log_debug(self.params)
+        #self.ts.log_debug(self.params)
 
     """
     Getter functions
@@ -2215,6 +2316,7 @@ class VoltageRideThrough(HilModel, EutParameters, DataLogging):
 
 class FrequencyRideThrough(HilModel, EutParameters, DataLogging):
     def __init__(self, ts, support_interfaces):
+        ts.log_debug(f"support_interfaces : {support_interfaces}")
         EutParameters.__init__(self, ts)
         self.params = {}
         HilModel.__init__(self, ts, support_interfaces)
@@ -2271,14 +2373,15 @@ class FrequencyRideThrough(HilModel, EutParameters, DataLogging):
             TEST_CONDITION["Step E"] = pd.Series([1, 1, self.f_nom], index=index)
             TEST_CONDITION["Step G"] = pd.Series([2, self.params["lf_period"], self.params["lf_parameter"]],
                                                  index=index)
-            TEST_CONDITION["Step H"] = pd.Series([1, 1, self.f_nom], index=index)
-
+            # TEST_CONDITION["Step H"] = pd.Series([1, 1, self.f_nom], index=index)
+            TEST_CONDITION["Step H"] = pd.Series([1, 11, self.f_nom], index=index)
         # TABLE 5 - CATEGORY III LVRT TEST CONDITION
         elif HFRT in current_mode:
             TEST_CONDITION["Step E"] = pd.Series([1, 1, self.f_nom], index=index)
             TEST_CONDITION["Step G"] = pd.Series([2, self.params["hf_period"], self.params["hf_parameter"]],
                                                  index=index)
-            TEST_CONDITION["Step H"] = pd.Series([1, 1, self.f_nom], index=index)
+            # TEST_CONDITION["Step H"] = pd.Series([1, 1, self.f_nom], index=index)
+            TEST_CONDITION["Step H"] = pd.Series([1, 11, self.f_nom], index=index)
         test_sequences_df = self.get_test_sequence(current_mode, TEST_CONDITION)
 
         return test_sequences_df
@@ -2343,6 +2446,138 @@ class FrequencyRideThrough(HilModel, EutParameters, DataLogging):
         _list.extend([float(extend_value)] * (final_length - list_length))
         return _list
 
+class PhaseChangeRideThrough(HilModel, EutParameters, DataLogging):
+    def __init__(self, ts, support_interfaces):
+        EutParameters.__init__(self, ts)
+        HilModel.__init__(self, ts, support_interfaces)
+        self.wfm_header = None
+        self._config()
+
+    def _config(self):
+        self.set_pcrt_params()
+        self.set_wfm_file_header()
+
+    """
+    Setter functions
+    """
+
+    def set_pcrt_params(self):
+        try:
+            # RT test parameters
+            self.params["eut_startup_time"] = self.ts.param_value('eut.startup_time')
+            self.params["model_name"] = self.hil.rt_lab_model
+        except Exception as e:
+            self.ts.log_error('Incorrect Parameter value : %s' % e)
+            raise
+
+    def extend_list_end(self, _list, extend_value, final_length):
+        list_length = len(_list)
+        _list.extend([float(extend_value)] * (final_length - list_length))
+        return _list
+
+    def set_pcrt_model_parameters(self, test_sequence):
+        parameters = []
+
+        # Enable pcrt mode in the IEEE1547_fast_functions model
+        parameters.append(("MODE", 2.0))
+
+        pcrt_condition_list = self.extend_list_end(test_sequence["PCRT_CONDITION"].to_list(), 0.0, 11)
+        parameters.append(("PCRT_CONDITION", pcrt_condition_list))
+
+        pcrt_start_timing_list = self.extend_list_end(test_sequence["PCRT_START_TIMING"].to_list(), 0.0, 11)
+        parameters.append(("PCRT_START_TIMING", pcrt_start_timing_list))
+
+        pcrt_end_timing_list = self.extend_list_end(test_sequence["PCRT_END_TIMING"].to_list(), 0.0, 11)
+        parameters.append(("PCRT_END_TIMING", pcrt_end_timing_list))
+
+        pcrt_values_list = self.extend_list_end(test_sequence["PCRT_VALUES"].to_list(), 0.0, 11)
+        parameters.append(("PCRT_VALUES", pcrt_values_list))
+        self.hil.set_matlab_variables(parameters)
+
+
+    def set_wfm_file_header(self):
+        self.wfm_header = ['TIME',
+                           'AC_V_1', 'AC_V_2', 'AC_V_3',
+                           'AC_I_1', 'AC_I_2', 'AC_I_3',
+                           'AC_PH_CMD_1', 'AC_PH_CMD_2', 'AC_PH_CMD_3',
+                           "TRIGGER"]
+
+    def set_test_conditions(self, test_num):
+        # Set useful variables
+        index = ['PCRT_CONDITION', 'MIN_DURATION', 'PCRT_VALUES']
+        TEST_CONDITION = {}
+        # Test Procedure 5.5.6.1
+        TEST_CONDITION["A"] = pd.Series([1.0, 30, 0.0], index=index)
+        TEST_CONDITION["G"] = pd.Series([1.0, 30, 0.0], index=index)
+        TEST_CONDITION["B"] = pd.Series([2.0, 0.5, 60.0], index=index)
+        TEST_CONDITION["C"] = pd.Series([3.0, 0.5, 60.0], index=index)
+        TEST_CONDITION["D"] = pd.Series([4.0, 0.5, 60.0], index=index)
+        TEST_CONDITION["E"] = pd.Series([5.0, 60.0, 20.0], index=index)
+        TEST_CONDITION["F"] = pd.Series([6.0, 60.0, 20.0], index=index)
+        test_sequences_df = self.get_test_sequence(test_num, TEST_CONDITION)
+
+        return test_sequences_df
+
+    """
+    Getter functions
+    """
+
+    def get_test_sequence(self, test_num, test_condition):
+        index = ['PCRT_CONDITION', 'MIN_DURATION', 'PCRT_VALUES']
+        T0 = self.params["eut_startup_time"]
+        test_sequences_df = pd.DataFrame(columns=index)
+        if 1.0 == test_num:
+            # ABA
+            test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["B"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["G"], ignore_index=True)
+        elif 2.0 == test_num:
+            # ACA
+            test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["C"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["G"], ignore_index=True)
+        elif 3.0 == test_num:
+            # ADA
+            test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["D"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["G"], ignore_index=True)
+        elif 4.0 == test_num:
+            # AEA
+            test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["E"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["G"], ignore_index=True)
+        else:
+            # AFA
+            test_sequences_df = test_sequences_df.append(test_condition["A"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["F"], ignore_index=True)
+            test_sequences_df = test_sequences_df.append(test_condition["G"], ignore_index=True)
+
+        test_sequences_df.loc[0, 'PCRT_START_TIMING'] = T0
+        # Calculate the timing sequences
+        test_sequences_df.loc[0, 'PCRT_END_TIMING'] = T0 + test_sequences_df.loc[0, 'MIN_DURATION']
+        for i in range(1, len(test_sequences_df)):
+            test_sequences_df.loc[i, 'PCRT_START_TIMING'] = test_sequences_df.loc[i - 1, 'PCRT_END_TIMING']
+            test_sequences_df.loc[i, 'PCRT_END_TIMING'] = test_sequences_df.loc[i, 'PCRT_START_TIMING'] + \
+                                                         test_sequences_df.loc[i, 'MIN_DURATION']
+        return test_sequences_df
+
+    def get_pcrt_stop_time(self, test_sequences_df):
+        return test_sequences_df["PCRT_END_TIMING"].iloc[-1]
+
+    def get_wfm_file_header(self):
+        return self.wfm_header
+
+    def get_rms_file_header(self):
+
+        rms_header = ['TIME',
+                           'AC_V_1', 'AC_V_2', 'AC_V_3',
+                           'AC_I_1', 'AC_I_2', 'AC_I_3',
+                           'AC_P_1', 'AC_P_2', 'AC_P_3',
+                           'AC_Q_1', 'AC_Q_2', 'AC_Q_3',
+                           'AC_PH_CMD_1', 'AC_PH_CMD_2', 'AC_PH_CMD_3',
+                           "TRIGGER"]
+
+        return rms_header
 
 if __name__ == "__main__":
     pass
