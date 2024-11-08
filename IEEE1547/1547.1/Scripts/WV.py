@@ -38,7 +38,7 @@ from svpelab import loadsim
 from svpelab import pvsim
 from svpelab import das
 from svpelab import der
-from svpelab import hil
+from svpelab import hil as hil_lib
 from svpelab import p1547
 import script
 from svpelab import result as rslt
@@ -52,6 +52,12 @@ import math
 WV = 'WV'  # Watt-Var
 
 def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
+    #####################################################
+    # 
+    #
+    #
+    #
+    #####################################################
 
     result = script.RESULT_FAIL
     daq = None
@@ -59,7 +65,7 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
     grid = None
     pv = None
     eut = None
-    chil = None
+    hil = None
     result_summary = None
     dataset_filename = None
 
@@ -107,12 +113,15 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
         '''
 
         # initialize HIL environment, if necessary
-        chil = hil.hil_init(ts)
-        if chil is not None:
-            chil.config()
+        hil = hil_lib.hil_init(ts)
+        hil_setup = ts.params['hil.setup']
+
+        if hil is not None and hil_setup == 'SIL':
+            ts.log('Start simulation of hil')
+            hil.start_simulation()
 
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': chil}) 
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
@@ -121,7 +130,7 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
         das_points = ActiveFunction.get_sc_points()
 
         # initialize data acquisition system
-        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': chil}) 
+        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil})
 
         ts.log_debug(0.05 * ts.param_value('eut.s_rated'))
         daq.sc['P_TARGET'] = v_nom
@@ -132,12 +141,17 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
 
         ts.log('DAS device: %s' % daq.info())
 
+        ActiveFunction.set_daq(daq)
+
         '''
         b) Set all voltage trip parameters to the widest range of adjustability.  Disable all reactive/active power
         control functions.
         '''
+        # TODO 1.Add absorb option possibility for EUT
+        # TODO 2.Add communication with EUT
 
-        eut = der.der_init(ts, support_interfaces={'hil': chil}) 
+
+        eut = der.der_init(ts, support_interfaces={'hil': hil})
         if eut is not None:
             eut.config()
             ts.log_debug(eut.measurements())
@@ -160,9 +174,9 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
         else:
             ts.log_debug('Set L/HVRT and trip parameters set to the widest range of adjustability possible.')
 
-        # Special considerations for CHIL ASGC/Typhoon startup
+        # Special considerations for hil ASGC/Typhoon startup
         '''
-        if chil is not None:
+        if hil is not None:
             if eut is not None:
                 if eut.measurements() is not None:
                     inv_power = eut.measurements().get('W')
@@ -187,7 +201,11 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
         '''
         c) Set all AC test source parameters to the nominal operating voltage and frequency.
         '''
-        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': chil})  # Turn on AC so the EUT can be initialized
+        if hil is not None and hil_setup == 'PHIL':
+            ts.log('Start simulation of hil')
+            hil.start_simulation()
+
+        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': hil})  # Turn on AC so the EUT can be initialized
         if grid is not None:
             grid.voltage(v_nom)
 
@@ -211,11 +229,6 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
         dd) Repeat steps e) through dd) for characteristics 2 and 3.
         '''
 
-        #TODO 1.Add absorb option possibility for EUT
-        #TODO 2.Add communication with EUT
-        if chil is not None:
-            ts.log('Start simulation of CHIL')
-            chil.start_simulation()
         for wv_curve in wv_curves:
             ts.log('Starting test with characteristic curve %s' % (wv_curve))
             ActiveFunction.reset_curve(wv_curve)
@@ -228,12 +241,14 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
             if eut is not None:
                 # Activate watt-var function with following parameters
                 # SunSpec convention is to use percentages for P and Q points.
-                wv_curve_params = {'w': [p_pairs['P1']*(100/p_rated),
-                                         p_pairs['P2']*(100/p_rated),
-                                         p_pairs['P3']*(100/p_rated)],
-                                   'var': [p_pairs['Q1']*(100/var_rated),
-                                           p_pairs['Q2']*(100/var_rated),
-                                           p_pairs['Q3']*(100/var_rated)]}
+                wv_curve_params = {'w': [p_pairs['P1']/p_rated,
+                                         p_pairs['P2']/p_rated,
+                                         p_pairs['P3']/p_rated],
+                                   'var': [p_pairs['Q1']/s_rated,
+                                           p_pairs['Q2']/s_rated,
+                                           p_pairs['Q3']/s_rated],
+                                   'RmpPtTms': wv_response_time[wv_curve]}
+
                 ts.log_debug('Sending WV points: %s' % wv_curve_params)
                 eut.watt_var(params={'Ena': True, 'curve': wv_curve_params})
 
@@ -253,9 +268,9 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
                     pv.iv_curve_config(pmp=pv_power_setting, vmp=v_in_nom)
                     pv.irradiance_set(1000.)
 
-                # Special considerations for CHIL ASGC/Typhoon startup 
+                # Special considerations for hil ASGC/Typhoon startup
                 '''
-                if chil is not None:
+                if hil is not None:
                     if eut is not None:
                         if eut.measurements() is not None:
                             inv_power = eut.measurements().get('W')
@@ -288,13 +303,13 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
 
                 for step_label, p_step in p_steps_dict.items():
                     ts.log('Power step: setting Grid power to %s (W)(%s)' % (p_step, step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     step_dict = {'V': v_nom, 'P': p_step}
                     if pv is not None:
                         pv.power_set(step_dict['P'])
 
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 ts.log('Sampling complete')
@@ -333,10 +348,9 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
             if v_nom is not None:
                 grid.voltage(v_nom)
             grid.close()
-        if chil is not None:
-            chil.close()
+        if hil is not None:
+            hil.close()
         if eut is not None:
-            eut.deactivate_all_fct()
             eut.close()
         if result_summary is not None:
             result_summary.close()
@@ -354,6 +368,7 @@ def watt_var_mode(wv_curves, wv_response_time, pwr_lvls):
 
 
 def test_run():
+
 
     result = script.RESULT_FAIL
 
@@ -473,7 +488,7 @@ der.params(info)
 gridsim.params(info)
 pvsim.params(info)
 das.params(info)
-hil.params(info)
+hil_lib.params(info)
 
 # Add the SIRFN logo
 info.logo('sirfn.png')

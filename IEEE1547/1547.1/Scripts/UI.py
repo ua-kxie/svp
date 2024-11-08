@@ -45,7 +45,7 @@ def find_rlc(p_utility, q_utility, r_set, l_set, c_set):
     :param c_set: prior capacitor % change
     :return:
     """
-
+    # TODO Look into those calculation to make sure it fits our Simulated testbench
     smoothing_factor = 0.50  # only move a small percentage of the desired change for stability
     cap = c_set + (6./1300. * q_utility) * smoothing_factor
     res = r_set + (50.5/11700. * p_utility) * smoothing_factor
@@ -64,6 +64,43 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     :return: None
     """
 
+    '''
+    Adjusting the constant power factor according to table 13 (CAT A) or 14 (CAT B)
+    '''
+    if test_params['pf'] is not None:
+        if test_params['pf'] < 0:
+            eut.set_const_pf(params={
+                'const_pf_mode_enable': True,
+                'const_pf_excitation': 'abs',
+                'const_pf_abs': test_params['pf'],
+                'const_pf_olrt': 1.0
+            })
+        else:
+            eut.set_const_pf(params={
+                'const_pf_mode_enable': True,
+                'const_pf_excitation': 'inj',
+                'const_pf_inj': test_params['pf'],
+                'const_pf_olrt': 1.0
+            })
+
+    '''
+    Adjusting the constant reactive power according to table 13 (CAT A) or 14 (CAT B)
+    '''
+    if test_params['q_fixed'] is not None:
+        if test_params['q_fixed'] < 0:
+            eut.set_const_q(params={
+                'const_q_mode_enable': True,
+                'const_q_excitation': 'inj',
+                'const_q': test_params['q_fixed'],
+                'const_q_olrt': 1.0
+            })
+        else:
+            eut.set_const_q(params={
+                'const_q_mode_enable': True,
+                'const_q_excitation': 'abs',
+                'const_q': test_params['q_fixed'],
+                'const_q_olrt': 1.0
+            })
     '''
     Table 15 shows the voltage and frequency trip levels and clearing time settings to be used for the
     unintentional islanding tests. If the EUT is capable of operating at wider voltage and frequency trip
@@ -89,15 +126,20 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     '''
 
     if cat2 == 'CAT_I' or cat2 == 'CAT_II':
-        eut.set_ov(params={'ov_trip_v_pts_as': [1.2, 1.2], 'ov_trip_t_pts_as': [0.16, 13]})
-        eut.set_uv(params={'uv_trip_v_pts_as': [0., 0.], 'uv_trip_t_pts_as': [21, 2]})
-        eut.set_of(params={'of_trip_f_pts_as': [66., 66.], 'of_trip_t_pts_as': [1000, 1000]})
-        eut.set_uf(params={'uf_trip_f_pts_as': [50., 50.], 'uf_trip_t_pts_as': [1000, 1000]})
+        eut.set_ov(params={'ov_trip_v_pts': [1.2, 1.2], 'ov_trip_t_pts': [0.16, 13]})
+        eut.set_uv(params={'uv_trip_v_pts': [0., 0.], 'uv_trip_t_pts': [21, 2]})
+        eut.set_of(params={'of_trip_f_pts': [66., 66.], 'of_trip_t_pts': [1000, 1000]})
+        eut.set_uf(params={'uf_trip_f_pts': [50., 50.], 'uf_trip_t_pts': [1000, 1000]})
+    elif cat2 == 'CAT_III':
+        eut.set_ov(params={'ov_trip_v_pts': [1.2, 1.2], 'ov_trip_t_pts': [0.16, 13]})
+        eut.set_uv(params={'uv_trip_v_pts': [0., 0.], 'uv_trip_t_pts': [50, 21]})
+        eut.set_of(params={'of_trip_f_pts': [66., 66.], 'of_trip_t_pts': [1000, 1000]})
+        eut.set_uf(params={'uf_trip_f_pts': [50., 50.], 'uf_trip_t_pts': [1000, 1000]})
     else:
-        eut.set_ov(params={'ov_trip_v_pts_as': [1.2, 1.2], 'ov_trip_t_pts_as': [0.16, 13]})
-        eut.set_uv(params={'uv_trip_v_pts_as': [0., 0.], 'uv_trip_t_pts_as': [50, 21]})
-        eut.set_of(params={'of_trip_f_pts_as': [66., 66.], 'of_trip_t_pts_as': [1000, 1000]})
-        eut.set_uf(params={'uf_trip_f_pts_as': [50., 50.], 'uf_trip_t_pts_as': [1000, 1000]})
+        eut.set_ov(params={'ov_trip_v_pts': [1.2, 1.1], 'ov_trip_t_pts': [0.16, 13]})
+        eut.set_uv(params={'uv_trip_v_pts': [0.88, 0.1], 'uv_trip_t_pts': [21.0, 2.0]})
+        eut.set_of(params={'of_trip_f_pts': [66., 66.], 'of_trip_t_pts': [1000, 1000]})
+        eut.set_uf(params={'uf_trip_f_pts': [50., 50.], 'uf_trip_t_pts': [1000, 1000]})
 
     '''
     Table 16 shows the most aggressive settings for the voltage–active power function to be used in
@@ -123,13 +165,13 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     --------------------------------------------------------------------------------
     '''
     if test_params['vw'] == 'Default':
-        eut.set_pv(params={'pv_mode_enable_as': True, 'pv_curve_v_pts_as': [1.06, 1.10],
-                           'pv_curve_p_pts_as': [1., 0.2], 'pv_olrt_as': 10.})
+        eut.set_pv(params={'pv_mode_enable': True, 'pv_curve_v_pts': [1.06, 1.10],
+                           'pv_curve_p_pts': [1., 0.2], 'pv_olrt': 10.})
     elif test_params['vw'] == 'MA':
-        eut.set_pv(params={'pv_mode_enable_as': True, 'pv_curve_v_pts_as': [1.05, 1.06],
-                           'pv_curve_p_pts_as': [1., 0.2], 'pv_olrt_as': 0.5})
+        eut.set_pv(params={'pv_mode_enable': True, 'pv_curve_v_pts': [1.05, 1.06],
+                           'pv_curve_p_pts': [1., 0.2], 'pv_olrt': 0.5})
     else:
-        eut.set_pv(params={'pv_mode_enable_as': False})
+        eut.set_pv(params={'pv_mode_enable': False})
 
     '''
     Table 17 shows the settings for the voltage-reactive power function to be used in these tests. The
@@ -163,26 +205,26 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     '''
     if cat == 'CAT_A':
         if test_params['vv'] == 'Default':
-            eut.set_qv(params={'qv_mode_enable_as': True, 'qv_vref_as': 1., 'qv_vref_auto_mode_as': 'Off',
+            eut.set_qv(params={'qv_mode_enable': True, 'qv_vref': 1., 'qv_vref_auto_mode': 'Off',
                                'qv_curve_v_pts': [0.9, 1., 1., 1.1],
-                               'qv_curve_q_pts': [0.25, 0., 0., -0.25], 'qv_olrt_as': 10.})
+                               'qv_curve_q_pts': [0.25, 0., 0., -0.25], 'qv_olrt': 10.})
         elif test_params['vv'] == 'MA':
-            eut.set_qv(params={'qv_mode_enable_as': True, 'qv_vref_as': 1., 'qv_vref_auto_mode_as': 'Off',
+            eut.set_qv(params={'qv_mode_enable': True, 'qv_vref': 1., 'qv_vref_auto_mode': 'Off',
                                'qv_curve_v_pts': [0.98, 1., 1., 1.02],
-                               'qv_curve_q_pts': [0.25, 0., 0., -0.25], 'qv_olrt_as': 1.})
+                               'qv_curve_q_pts': [0.25, 0., 0., -0.25], 'qv_olrt': 1.})
         else:
-            eut.set_qv(params={'qv_mode_enable_as': False})
+            eut.set_qv(params={'qv_mode_enable': False})
     else:
         if test_params['vv'] == 'Default':
-            eut.set_qv(params={'qv_mode_enable_as': True, 'qv_vref_as': 1., 'qv_vref_auto_mode_as': 'Off',
+            eut.set_qv(params={'qv_mode_enable': True, 'qv_vref': 1., 'qv_vref_auto_mode': 'Off',
                                'qv_curve_v_pts': [0.92, 0.98, 1.02, 1.08],
-                               'qv_curve_q_pts': [0.44, 0., 0., -0.44], 'qv_olrt_as': 5.})
+                               'qv_curve_q_pts': [0.44, 0., 0., -0.44], 'qv_olrt': 5.})
         elif test_params['vv'] == 'MA':
-            eut.set_qv(params={'qv_mode_enable_as': True, 'qv_vref_as': 1., 'qv_vref_auto_mode_as': 'Off',
+            eut.set_qv(params={'qv_mode_enable': True, 'qv_vref': 1., 'qv_vref_auto_mode': 'Off',
                                'qv_curve_v_pts': [0.98, 1., 1., 1.02],
-                               'qv_curve_q_pts': [0.44, 0., 0., -0.44], 'qv_olrt_as': 1.})
+                               'qv_curve_q_pts': [0.44, 0., 0., -0.44], 'qv_olrt': 1.})
         else:
-            eut.set_qv(params={'qv_mode_enable_as': False})
+            eut.set_qv(params={'qv_mode_enable': False})
 
     '''
 
@@ -207,22 +249,22 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     '''
     if cat == 'CAT_A':
         if test_params['wv'] == 'Default':
-            eut.set_qp(params={'qp_mode_enable_as': True, 'qp_curve_p_gen_pts_as': [0.2, 0.5, 1.0],
-                               'qp_curve_q_gen_pts_as': [0., 0., -0.25]})
+            eut.set_qp(params={'qp_mode_enable': True, 'qp_curve_p_gen_pts': [0.2, 0.5, 1.0],
+                               'qp_curve_q_gen_pts': [0., 0., -0.25]})
         elif test_params['wv'] == 'MA':
-            eut.set_qp(params={'qp_mode_enable_as': True, 'qp_curve_p_gen_pts_as': [0.2, 0.8, 0.9],
-                               'qp_curve_q_gen_pts_as': [0.44, 0.44, -0.25]})
+            eut.set_qp(params={'qp_mode_enable': True, 'qp_curve_p_gen_pts': [0.2, 0.8, 0.9],
+                               'qp_curve_q_gen_pts': [0.44, 0.44, -0.25]})
         else:
-            eut.set_pv(params={'qp_mode_enable_as': False})
+            eut.set_pv(params={'qp_mode_enable': False})
     else:
         if test_params['wv'] == 'Default':
-            eut.set_qp(params={'qp_mode_enable_as': True, 'qp_curve_p_gen_pts_as': [0.2, 0.5, 1.0],
-                               'qp_curve_q_gen_pts_as': [0., 0., -0.44]})
+            eut.set_qp(params={'qp_mode_enable': True, 'qp_curve_p_gen_pts': [0.2, 0.5, 1.0],
+                               'qp_curve_q_gen_pts': [0., 0., -0.44]})
         elif test_params['wv'] == 'MA':
-            eut.set_qp(params={'qp_mode_enable_as': True, 'qp_curve_p_gen_pts_as': [0.2, 0.9, 1.0],
-                               'qp_curve_q_gen_pts_as': [0.44, 0.44, -0.44]})
+            eut.set_qp(params={'qp_mode_enable': True, 'qp_curve_p_gen_pts': [0.2, 0.9, 1.0],
+                               'qp_curve_q_gen_pts': [0.44, 0.44, -0.44]})
         else:
-            eut.set_qp(params={'qp_mode_enable_as': False})
+            eut.set_qp(params={'qp_mode_enable': False})
 
     '''
     Table 19 shows the settings for the frequency-droop function to be used in these tests. Least
@@ -241,24 +283,24 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     '''
     if cat2 == 'CAT_I' or cat2 == 'CAT_II':
         if test_params['fw'] == 'la':
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 1.0, 'pf_dbuf_as': 1.0,
-                               'pf_kof_as': 0.05, 'pf_kuf_as': 0.05, 'pf_olrt_as': 0.})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 1.0, 'pf_dbuf': 1.0,
+                               'pf_kof': 0.05, 'pf_kuf': 0.05, 'pf_olrt': 0.})
         elif test_params['fw'] == 'Default':
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 0.036, 'pf_dbuf_as': 0.036,
-                               'pf_kof_as': 0.05, 'pf_kuf_as': 0.05, 'pf_olrt_as': 5.})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 0.036, 'pf_dbuf': 0.036,
+                               'pf_kof': 0.05, 'pf_kuf': 0.05, 'pf_olrt': 5.})
         else:  # ma
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 0.017, 'pf_dbuf_as': 0.017,
-                               'pf_kof_as': 0.03, 'pf_kuf_as': 0.03, 'pf_olrt_as': 1.})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 0.017, 'pf_dbuf': 0.017,
+                               'pf_kof': 0.03, 'pf_kuf': 0.03, 'pf_olrt': 1.})
     else:
         if test_params['fw'] == 'la':
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 1.0, 'pf_dbuf_as': 1.0,
-                               'pf_kof_as': 0.05, 'pf_kuf_as': 0.05, 'pf_olrt_as': 10.})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 1.0, 'pf_dbuf': 1.0,
+                               'pf_kof': 0.05, 'pf_kuf': 0.05, 'pf_olrt': 10.})
         elif test_params['fw'] == 'Default':
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 0.036, 'pf_dbuf_as': 0.036,
-                               'pf_kof_as': 0.05, 'pf_kuf_as': 0.05, 'pf_olrt_as': 5.})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 0.036, 'pf_dbuf': 0.036,
+                               'pf_kof': 0.05, 'pf_kuf': 0.05, 'pf_olrt': 5.})
         else:  # ma
-            eut.set_pf(params={'pf_mode_enable_as': True, 'pf_dbof_as': 0.017, 'pf_dbuf_as': 0.017,
-                               'pf_kof_as': 0.02, 'pf_kuf_as': 0.02, 'pf_olrt_as': 0.2})
+            eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 0.017, 'pf_dbuf': 0.017,
+                               'pf_kof': 0.02, 'pf_kuf': 0.02, 'pf_olrt': 0.2})
 
 
 def print_measurements(meas):
@@ -290,7 +332,7 @@ def print_measurements(meas):
 
 
 def run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count, low_freq_count, result_summary,
-                c_set):
+                c_set, p_rated, q_rated, q_c):
     """
     Run single UI test
 
@@ -311,7 +353,27 @@ def run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count
     ctrl_sigs = phil.get_control_signals(details=False)
     ctrl_sigs[17] = c_set * q_inc  # Capacitor Pot
     phil.set_control_signals(values=ctrl_sigs)
+    if q_inc == 0.95:
+        a = 0
 
+    count = 0
+    while count < 20:
+        ts.sleep(1)
+        count += 1
+        daq.data_sample()
+        diff = abs((daq.data_read()['AC_Q_S3_PU']) - (1 - q_inc)*q_c)
+        ts.log(f'Waited {count} sec for load to adjust. desired reactive power is {q_inc*q_c} pu, load reactive power is'
+               f' {q_c - daq.data_read()["AC_Q_S3_PU"]} and error between them is {diff}')
+        if diff < 0.0075:
+            break
+        # else:
+        #     ctrl_sigs = phil.get_control_signals(details=False)
+        #     c_set = ctrl_sigs[17]
+        #     ctrl_sigs[17] = (c_set * q_inc)*(1 - (daq.data_read()['AC_Q_S3_PU']) - (1 - q_inc)*q_c * 10.0)  # Capacitor Pot (6./1300. * q_utility) * smoothing_factor
+        #     phil.set_control_signals(values=ctrl_sigs)
+        if count >= 20:
+            ts.log_error('Load did not adjust correctly')
+            raise Exception
     '''
     2) With the EUT and load operating at stable conditions, record the voltage and current at switch
     S3. Record the active and reactive power at switch S3 on a net and per phase basis. Record
@@ -334,12 +396,14 @@ def run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count
     ts.log('Step e)3) Opening switch s3')
     # waveform OpWrite configured to capture when S3 is opened
     ctrl_sigs[2] = 1  #3 = Islanding Test
+    daq.waveform_record()
     phil.set_control_signals(values=ctrl_sigs)
 
     ts.log('Waiting 10 seconds to determine trip time and island frequency.')
-    ts.sleep(10)
+    ts.sleep(11)
 
     # Get console data
+    daq.waveform_stop_record()
     daq.data_sample()
     t_trip = daq.data_read()['TRIP_TIME']
     freq = daq.data_read()['ISLAND_FREQ']  # calculate fundamental frequency after S3 is open
@@ -363,18 +427,20 @@ def run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count
     SizeBuf = 1/Nbuffers * {[(Tend - Tstart) / Ts ]*(Nsig+1)*8*Nbss} = [(5.5/40e-6)*(8)*8*1000]/16 = 1375000
     Size of one buffer in bytes (SizeBuf) = (Nsig+1) * 8 * Nbss (Minimum) = (7+1)*8*1000 = 64000
     '''
-    ts.log('Waiting 10 seconds for Opal to save the waveform data.')
-    ts.sleep(10)
+    ts.log('Waiting 1 seconds for Opal to save the waveform data.')
+    ts.sleep(1)
 
-    test_filename = 'UI_Test_%s_Q%0.2f' % (test_num, q_inc)
-    ts.log('------------{}------------'.format(test_filename))
-    # Convert and save the .mat file that contains the phase jump start
-    ts.log('Processing waveform dataset')
-    ds = daq.waveform_capture_dataset()  # returns list of databases of waveforms (overloaded)
-    ui_wave = '%s.csv' % test_filename
-    ts.log('Saving file: %s' % ui_wave)
-    ds[0].to_csv(ts.result_file_path(ui_wave))
-    ts.result_file(ui_wave)
+    # test_filename = 'UI_Test_%s_Q%0.2f' % (test_num, q_inc)
+    # ts.log('------------{}------------'.format(test_filename))
+    # # Convert and save the .mat file that contains the phase jump start
+    # ts.log('Processing waveform dataset')
+    # ds = daq.waveform_capture_dataset()  # returns list of databases of waveforms (overloaded)
+    # ui_wave = '%s.csv' % test_filename
+    # ts.log('Saving file: %s' % ui_wave)
+    # ds[0].to_csv(ts.result_file_path(ui_wave))
+    # ts.result_file(ui_wave)
+
+
 
     '''
     If at any point at least three test instances show island frequency increasing above the
@@ -389,12 +455,12 @@ def run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count
         low_freq_count += 1
 
     # 'Test, Start Waveform, Reactive Power, Trip Time'
-    result_summary.write('%s, %s, %s, %s\n' % (test_filename, ui_wave, q_inc, t_trip))
+    result_summary.write('%s, %s\n' % (q_inc, t_trip))
 
     return t_trips, t_trip, high_freq_count, low_freq_count
 
 
-def energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated):
+def energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated):
     """
     Power on amplifier and wait for EUT to start
 
@@ -405,8 +471,9 @@ def energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated):
     :param p_rated: power rating of EUT
     :return: None
     """
+    ts.sleep(9)
     ctrl_sigs[2] = 0.  # close S3
-    ctrl_sigs[3] = 1.  # energize amplifier
+    # ctrl_sigs[3] = 0.  # energize amplifier
     # if not ts.confirm('ABOUT TO ENERGIZE AMPLIFIER - OK?'):
     #     raise Exception
     phil.set_control_signals(values=ctrl_sigs)
@@ -417,9 +484,27 @@ def energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated):
         count += 1
         daq.data_sample()
         inv_p_pu = daq.data_read()['AC_P'] / p_rated
-        ts.log('Waited %s sec for EUT to start. Inverter power is %0.4f pu.' % (count, inv_p_pu))
+        ts.log('Waited %s sec for EUT to start. Inverter power is %0.4f pourcent of base inverter power.' % (count, inv_p_pu * 100))
         if inv_p_pu > 0.9:
             break
+        else:
+            ctrl_sigs[3] = 1.  # de-energize amplifier
+            phil.set_control_signals(values=ctrl_sigs)
+            if pv is not None:
+                pv.power_set(s_rated, irradiance=1100)
+                pv.power_on()
+                ts.sleep(0.5)
+                ts.log('Setting PV power to %0.2f W' % s_rated)
+            time.sleep(2.0)
+            ctrl_sigs[2] = 0.  # close S3
+            ctrl_sigs[3] = 0.  # energize amplifier
+            phil.set_control_signals(values=ctrl_sigs)
+            ts.sleep(10.0)
+            if pv is not None:
+                pv.power_set(p_rated, irradiance=1000)
+                pv.power_on()
+                ts.sleep(0.5)
+                ts.log('Setting PV power to %0.2f W' % p_rated)
         if count >= eut_startup_time:
             ts.log_error('EUT did not start.')
             raise Exception
@@ -481,7 +566,7 @@ def test_run():
         execute = ts.param_value('hil_config.execute')
         model_name = ts.param_value('hil_config.model_name')
 
-        test_nums = str(ts.param_value('phase_jump.test_num')).split(',')
+        test_nums = str(ts.param_value('ui.test_num')).split(',')
         test_num = []
         for t in test_nums:
             try:
@@ -490,15 +575,15 @@ def test_run():
                 ts.log_error('Invalid test numbers: %s' % e)
                 raise
 
-        n_iter = ts.param_value('phase_jump.n_iter')
-        eut_startup_time = ts.param_value('phase_jump_startup.eut_startup_time')
+        n_iter = ts.param_value('ui.n_iter')
+        eut_startup_time = ts.param_value('ui_startup.eut_startup_time')
 
         v_ll = ts.param_value('eut.v_ll')
         v_nom = ts.param_value('eut.v_nom')
         s_rated = ts.param_value('eut.s_rated')
         p_rated = s_rated
-        phase_comp = ts.param_value('phase_jump.phase_comp')
-        v_tranducer_scale = ts.param_value('phase_jump.transducer_gain')
+        phase_comp = ts.param_value('ui.phase_comp')
+        v_tranducer_scale = ts.param_value('ui.transducer_gain')
 
         cat = ts.param_value('eut.cat')
         cat2 = ts.param_value('eut.cat2')
@@ -535,25 +620,23 @@ def test_run():
         ts.log_debug("1547.1 Library configured for %s" % active_function.get_script_name())
 
         # initialize the pv
-        pv = pvsim.pvsim_init(ts)
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': phil})
         if pv is not None:
+            pv.power_set(1.00*p_rated, irradiance=1100)
             pv.power_on()
             ts.sleep(0.5)
             ts.log('Setting PV power to %0.2f W' % p_rated)
-            pv.power_set(p_rated)
 
-        if phil is not None:
-            ts.log("{}".format(phil.info()))
-            if open_proj == 'Yes':
-                phil.open()
+
 
         # initialize the das
         das_points = active_function.get_sc_points()
         daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': phil, 'pvsim': pv})
         ts.sleep(0.5)
+        active_function.set_daq(daq)
 
         # initialize the der
-        eut = der1547.der1547_init(ts)
+        eut = der1547.der1547_init(ts, support_interfaces={'hil': phil})
         eut.config()
         ts.sleep(0.5)
 
@@ -587,9 +670,7 @@ def test_run():
         |                           | level, then it shall be operated at its closest nonzero power level capability.
         -----------------------------------------------------------------------------------------------------------
         '''
-        if pv is not None:
-            ts.log('Setting PV power to %0.2f W' % (p_rated*1.25))
-            pv.power_set(p_rated*1.25)
+
 
         '''
         
@@ -718,7 +799,7 @@ def test_run():
                        '2B': {'p_eut': 0.5, 'q_eut': 0., 'pf': 1., 'vv': None, 'wv': None, 'q_fixed': None,
                               't_resp': None, 'vw': 'Default', 'fw': 'Default',
                               'pr_pl_pc': -0.5, 'qc': 0.5, 'ql': -0.5, 'qf': 1.},
-                       '3B': {'p_eut': 0.9, 'q_eut': -0.25, 'pf': -0.90, 'vv': None, 'wv': None, 'q_fixed': None,
+                       '3B': {'p_eut': 0.9, 'q_eut': -0.44, 'pf': -0.90, 'vv': None, 'wv': None, 'q_fixed': None,
                               't_resp': None, 'vw': None, 'fw': 'LA',
                               'pr_pl_pc': -0.90, 'qc': 0.90, 'ql': -0.46, 'qf': 1.},
                        '4B': {'p_eut': 0.9, 'q_eut': 0.44, 'pf': 0.90, 'vv': None, 'wv': None, 'q_fixed': None,
@@ -733,9 +814,9 @@ def test_run():
                        '7B': {'p_eut': 0.5, 'q_eut': 0., 'pf': None, 'vv': None, 'wv': 'Default', 'q_fixed': None,
                               't_resp': None, 'vw': 'MA', 'fw': 'MA',
                               'pr_pl_pc': -0.5, 'qc': 0.5, 'ql': -0.5, 'qf': 1.},
-                       '8B': {'p_eut': 1., 'q_eut': 0., 'pf': None, 'vv': None, 'wv': 'MA', 'q_fixed': None,
+                       '8B': {'p_eut': 0.93, 'q_eut': 0.176, 'pf': None, 'vv': None, 'wv': 'MA', 'q_fixed': None,
                               't_resp': None, 'vw': 'MA', 'fw': 'MA',
-                              'pr_pl_pc': -1., 'qc': 1., 'ql': -1., 'qf': 1.},
+                              'pr_pl_pc': -0.93, 'qc': 0.754, 'ql': -0.93, 'qf': 1.},
                        '9B': {'p_eut': 0.5, 'q_eut': -0.44, 'pf': None, 'vv': None, 'wv': None, 'q_fixed': -0.44,
                               't_resp': None, 'vw': 'MA', 'fw': 'MA',
                               'pr_pl_pc': -0.9, 'qc': 0.5, 'ql': -0.06, 'qf': 1.},
@@ -769,9 +850,12 @@ def test_run():
             if cat == 'CAT_A':
                 test = str(test_number) + 'A'
                 test_params = cat_a_tests[test]
+                q_rated = abs(test_params['q_eut'])
             else:
                 test = str(test_number) + 'B'
                 test_params = cat_b_tests[test]  # This is completed by the RT-Lab Code
+                q_rated = abs(test_params['q_eut'])
+                # p_rated = test_params['p_eut']
 
             if compilation == 'Yes':
                 ts.sleep(1)
@@ -788,6 +872,62 @@ def test_run():
             if execute == 'Yes':
                 ts.log("    {}".format(phil.start_simulation()))
                 daq.data_capture(True)  # Start RMS data capture
+                daq.waveform_config()
+
+
+            # setting up the eut
+
+            # if eut is not None:
+            #     if test_params['pf'] is not None:
+            #         if test_params['pf'] < 0:
+            #             eut.set_const_pf({
+            #                 'const_pf_mode_enable': True,
+            #                 'const_pf_excitation' : 'inj',
+            #                 'const_pf_inj' : test_params['pf']
+            #             })
+            #         else:
+            #             eut.set_const_pf({
+            #                 'const_pf_mode_enable': True,
+            #                 'const_pf_excitation': 'abs',
+            #                 'const_pf_abs': test_params['pf']
+            #             })
+            #     if test_params['vv'] is not None:
+            #         if test_params['VV'] == 'Default':
+            #             eut.set_qv({
+            #                 'qv_mode_enable': True,
+            #                 'qv_curve_v_pts': [0.92, 0.98, 1.02, 1.08],
+            #                 'qv_curve_q_pts': [0.44, 0.0, 0.0, -0.44],
+            #                 'qv_olrt': test_params['t_resp']
+            #             })
+            #         elif test_params['VV'] == 'Default':
+            #             eut.set_qv({
+            #                 'qv_mode_enable': True,
+            #                 'qv_curve_v_pts': [0.98, 1.0, 1.0, 1.02],
+            #                 'qv_curve_q_pts': [0.44, 0.0, 0.0, -0.44],
+            #                 'qv_olrt': test_params['t_resp']
+            #             })
+            #     if test_params['wv'] is not None:
+            #         if test_params['Default']:
+            #             eut.set_qp({
+            #                 'qp_mode_enable': True,
+            #                 'qp_curve_p_gen_pts': [0.2, 0.5, 1.0],
+            #                 'qp_curve_q_gen_pts': [0.0, 0.0, -0.44],
+            #             })
+            #         elif test_params['MA']:
+            #             eut.set_qp({
+            #                 'qp_mode_enable': True,
+            #                 'qp_curve_p_gen_pts': [0.2, 0.9, 1.0],
+            #                 'qp_curve_q_gen_pts': [0.44, 0.44, -0.44],
+            #             })
+            #     if test_params['q_fixed'] is not None:
+            #         eut.set_const_q({
+            #
+            #         })
+            #
+            #     if test_params['vw'] is not None:
+            #
+            #     if test_params['fw'] is not None:
+
 
             # Set test number to initialize the RLC parameter based on Table 12 or 13 - done with test num update
             ctrl_sigs = phil.get_control_signals(details=False)
@@ -795,17 +935,22 @@ def test_run():
             ctrl_sigs[0] = float(test_number)  # test num
             ctrl_sigs[4] = v_ll  # set line-line voltage
             ctrl_sigs[5] = s_rated  # set EUT apparent power
-            ctrl_sigs[7] = 12  # degrees, must be determined beforehand
-            ctrl_sigs[17] = 0  # cap pot
-            ctrl_sigs[8] = 0  # r pot
+            ctrl_sigs[7] = 0  # degrees, must be determined beforehand
+            ctrl_sigs[17] = 100  # cap pot
+            ctrl_sigs[8] = 100  # r pot
             ts.log_debug('ctrl_sigs: %s' % ctrl_sigs)
-
-            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated)
+            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
 
             '''
             Set the grid support functions before verifying the RLC tuning
             '''
-            # set_grid_support_functions(eut, cat, cat2, test_params)
+            p_rated = test_params['p_eut'] * p_rated
+            if pv is not None:
+                pv.power_set(1.00 * p_rated, irradiance=1000)
+                pv.power_on()
+                ts.sleep(0.5)
+                ts.log('Setting PV power to %0.2f W' % p_rated)
+            set_grid_support_functions(eut, cat, cat2, test_params)
 
             # get PS3 and QS3
             daq.data_sample()
@@ -874,7 +1019,7 @@ def test_run():
                     v_out_of_band = False
 
                 ts.log_debug('WHILE LOOP LOGIC: not(-0.02 < ps3_pu < 0.02) = %s' % (not(-0.02 < ps3_pu < 0.02)))
-                ts.log_debug('WHILE LOOP LOGIC: not(-0.02 < ps3_pu < 0.02) = %s' % (not(-0.02 < qs3_pu < 0.02)))
+                ts.log_debug('WHILE LOOP LOGIC: not(-0.02 < qs3_pu < 0.02) = %s' % (not(-0.02 < qs3_pu < 0.02)))
                 ts.log_debug('WHILE LOOP LOGIC: v_out_of_band = %s' % (v_out_of_band))
 
             ts.log_debug('\t\t TARGET \t Value')
@@ -894,7 +1039,7 @@ def test_run():
             ts.log('This EUT supports the following Unintentional Islanding modes: %s' %
                    eut.get_ui()['ui_capability_er'])
             ts.log('Step d)1): Disabling the UI on EUT')
-            eut.set_ui(params={'ui_mode_enable_as': False})
+            eut.set_ui(params={'ui_mode_enable': 0.0})
 
             '''
             2) Operate the EUT and RLC load under the conditions established in step c) for any one of the
@@ -914,10 +1059,14 @@ def test_run():
             4) Open switch S3. If, after 10 s, the island circuit remains energized, the test setup is considered
             verified. Measure and record the voltage and frequency of the islanding operation.
             '''
+            UI_data_counter = 0
             ctrl_sigs = phil.get_control_signals()
             ts.log('Step d)4): Opening switch S3 to verify the EUT will island for 10 seconds.')
             ctrl_sigs[2] = 1  # open S3 switch (for islanding test execution)
+            daq.waveform_record()
             phil.set_control_signals(values=ctrl_sigs)
+            UI_data_counter += 1
+            UI_data_mapping = {UI_data_counter: f'd4_pretest_q_{1.0}'}
             start = time.time()
             end = start + 10
             ts.log('Step d)4): Measuring voltage and frequency of the island.')
@@ -928,12 +1077,12 @@ def test_run():
                        (meas['AC_VRMS_1'], meas['AC_VRMS_2'], meas['AC_VRMS_3'],
                         meas['AC_FREQ_PCC'], meas['AC_FREQ_PCC'], meas['AC_FREQ_PCC']))
                 ts.log('\tIslanded for %s seconds' % (time.time() - start))
-
+            daq.waveform_stop_record()
             '''
             5) De-energize the island.
             '''
             ts.log('Step d)5): De-energizing the island.')
-            ctrl_sigs[3] = 0.  # de-energize amplifier
+            # ctrl_sigs[3] = 1.  # de-energize amplifier
             phil.set_control_signals(values=ctrl_sigs)
             # phil.stop_simulation()
 
@@ -941,8 +1090,9 @@ def test_run():
             6) Enable the unintentional islanding protection in the EUT.
             '''
             # phil.start_simulation()
+            # ts.sleep(10)
             ts.log('Step d)6): Enable the unintentional islanding protection in the EUT.')
-            eut.set_ui(params={'ui_mode_enable_as': True})
+            eut.set_ui(params={'ui_mode_enable': 1.0})
             ts.log('EUT settings: %s' % eut.get_ui())
 
             '''
@@ -953,7 +1103,7 @@ def test_run():
             '''
             ts.log(15*'-' + 'STEP E: CLEARING TIME TESTS' + 15*'-')
             ts.log('Step e)1): Running test cases from Table 13 or 14.')
-            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated)
+            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
 
             '''
             e)4) The test is to be repeated with the reactive load (either capacitive or inductive) adjusted in 1%
@@ -963,8 +1113,8 @@ def test_run():
             # be completed with logic in the RT-Lab simulation
 
             ts.sleep(2.)  # wait
-            ctrl_sigs[2] = 1.  # open S3
-            phil.set_control_signals(values=ctrl_sigs)
+            # ctrl_sigs[2] = 1.  # open S3
+            # phil.set_control_signals(values=ctrl_sigs)
 
             counter = 0
             high_freq_count = 0
@@ -975,7 +1125,9 @@ def test_run():
                 counter += 1
                 t_trips, t_trip, high_freq_count, low_freq_count = \
                     run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count,
-                                low_freq_count, result_summary, c)
+                                low_freq_count, result_summary, c, s_rated, q_rated, test_params['qc'])
+                UI_data_counter += 1
+                UI_data_mapping[UI_data_counter] = f'e4_test_q_{q_inc}'
 
                 ''' 
                 e)4) If clearing times are still increasing at the 95% or 105% points, additional 1% increments 
@@ -983,40 +1135,61 @@ def test_run():
                 '''
                 min_unreached = True
                 q_min = 0.95
+
                 while min_unreached:
-                    if q_inc == q_min:
+                    if q_inc == q_min or (0.75 <= q_min < 0.95):
                         if t_trip > t_trips[round(q_min+0.01, 2)]:  # must run a lower q_inc test
+                            # ctrl_sigs[3] = 1.  # de-energize amplifier
+                            phil.set_control_signals(values=ctrl_sigs)
+                            # re-energize system and wait for EUT to start for next q_inc
+                            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
                             counter += 1
                             t_trips, t_trip, high_freq_count, low_freq_count = \
                                 run_ui_test(phil, model_name, daq, test_num, t_trips, q_min, high_freq_count,
-                                            low_freq_count, result_summary, c)
+                                            low_freq_count, result_summary, c, s_rated, q_rated, test_params['qc'])
+                            UI_data_counter += 1
+                            UI_data_mapping[UI_data_counter] = f'e4_test_dec_q_{q_inc}'
                             if t_trip < t_trips[round(q_min, 2)]:
                                 min_unreached = False
                             else:
                                 q_min -= 0.01
+                        else:
+                            ts.log(f'Trip times might be equal ({str(t_trip == t_trips[round(q_min+0.01, 2)])}) or '
+                                   f'reactive power min lim was reached ({q_min} pu)')
+                            break
                     else:
                         break
 
                 max_unreached = True
                 q_max = 1.05
                 while max_unreached:
-                    if q_inc == q_max:
-                        if t_trip > t_trips[round(q_min+0.01, 2)]:  # must run a lower q_inc test
+                    if q_inc == q_max or (1.05 < q_max <= 1.25):
+                        if t_trip > t_trips[round(q_max-0.01, 2)]:  # must run a lower q_inc test
+                            # ctrl_sigs[3] = 1.  # de-energize amplifier
+                            phil.set_control_signals(values=ctrl_sigs)
+                            # re-energize system and wait for EUT to start for next q_inc
+                            energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
                             counter += 1
                             t_trips, t_trip, high_freq_count, low_freq_count = \
                                 run_ui_test(phil, model_name, daq, test_num, t_trips, q_max, high_freq_count,
-                                            low_freq_count, result_summary, c)
-                            if t_trip < t_trips[round(q_min, 2)]:
+                                            low_freq_count, result_summary, c, s_rated, q_rated, test_params['qc'])
+                            UI_data_counter += 1
+                            UI_data_mapping[UI_data_counter] = f'e4_test_inc_q_{q_inc}'
+                            if t_trip < t_trips[round(q_max, 2)]:
                                 max_unreached = False
                             else:
-                                q_min -= 0.01
+                                q_max += 0.01
+                        else:
+                            ts.log(f'Trip times might be equal ({str(t_trip == t_trips[round(q_min + 0.01, 2)])}) or '
+                                   f'reactive power max lim was reached ({q_max} pu)')
+                            break
                     else:
                         break
 
-                ctrl_sigs[3] = 0.  # de-energize amplifier
+                # ctrl_sigs[3] = 1.  # de-energize amplifier
                 phil.set_control_signals(values=ctrl_sigs)
                 # re-energize system and wait for EUT to start for next q_inc
-                energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated)
+                energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
 
             '''
             5) After reviewing the results of the previous step, the 1% setting increments that yielded the
@@ -1025,18 +1198,47 @@ def test_run():
             iterations shall be run for all load settings in between.
             '''
             t_trips_sorted = [(q, t) for q, t in sorted(t_trips.items(), key=lambda item: item[1])]
-            q_repeats = t_trips_sorted[0:2][0]
+            trips_repeats = t_trips_sorted[-3:]
+            trips_repeats.sort(key=lambda x: x[0])
+            q_repeats = [int(round(100 * (trip[0] - 1))) for trip in trips_repeats]
+            cons_bool = sorted(q_repeats) == list(range(min(q_repeats), max(q_repeats)+1))
+            if cons_bool is False:
+                q_repeats = list(range(min(q_repeats), max(q_repeats)+1))
 
             for q_inc in q_repeats:
+                q_inc = (q_inc/100)+1
+                #first iteration
                 counter += 1
                 t_trips, t_trip, high_freq_count, low_freq_count = \
                     run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count,
-                                low_freq_count, result_summary, c)
+                                low_freq_count, result_summary, c, s_rated, q_rated, test_params['qc'])
+                UI_data_counter += 1
+                UI_data_mapping[UI_data_counter] = f'e5_retest_q_{q_inc}_1'
+                # ctrl_sigs[3] = 1.  # de-energize amplifier
+                phil.set_control_signals(values=ctrl_sigs)
+                # re-energize system and wait for EUT to start for next q_inc
+                energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
+
+                # second iteration
+                counter += 1
+                t_trips, t_trip, high_freq_count, low_freq_count = \
+                    run_ui_test(phil, model_name, daq, test_num, t_trips, q_inc, high_freq_count,
+                                low_freq_count, result_summary, c, s_rated, q_rated, test_params['qc'])
+                UI_data_counter += 1
+                UI_data_mapping[UI_data_counter] = f'e5_retest_q_{q_inc}_2'
+                # ctrl_sigs[3] = 1.  # de-energize amplifier
+                phil.set_control_signals(values=ctrl_sigs)
+                # re-energize system and wait for EUT to start for next q_inc
+                energize_system(ctrl_sigs, phil, daq, eut_startup_time, p_rated, pv, s_rated)
 
             daq.data_capture(False)
 
+
+
+
+            ts.log(f"Matlab waveform UI_data file order:{UI_data_mapping}")
             ts.log('Sampling RMS complete')
-            rms_dataset_filename = test_num + "_RMS.csv"
+            rms_dataset_filename = str(test_num) + "_RMS.csv"
             ds = daq.data_capture_dataset()
             ts.log('Saving file: %s' % rms_dataset_filename)
             ds.to_csv(ts.result_file_path(rms_dataset_filename))
@@ -1064,8 +1266,12 @@ def test_run():
     finally:
         if phil is not None:
             if phil.model_state() == 'Model Running':
+                if daq is not None:
+                    daq.device.close()
                 phil.stop_simulation()
             phil.close()
+            if 'UI_data_mapping' in locals() or 'UI_data_mapping' in globals():
+                daq.waveform_capture_dataset(UI_data_counter, UI_data_mapping)
         if daq is not None:
             daq.close()
         if pv is not None:
@@ -1120,14 +1326,14 @@ info.param('hil_config.load', label='Load the model to target?', default="Yes", 
 info.param('hil_config.execute', label='Execute the model on target?', default="Yes", values=["Yes", "No"])
 info.param('hil_config.model_name', label='Model Name', default="Phase_Jump_A_B_A")
 
-info.param_group('phase_jump', label='IEEE 1547.1 Phase Jump Configuration')
-info.param('phase_jump.test_num', label='Comma-seperated Test Numbers (1-10)', default='1,2,3,4')
-info.param('phase_jump.n_iter', label='Number of Iterations', default=5)
-info.param('phase_jump.phase_comp', label='Phase compensation(deg)', default=0.)
-info.param('phase_jump.transducer_gain', label='PHIL transducer gain', default=43.1)
+info.param_group('ui', label='IEEE 1547.1 unintentionnal islanding Configuration')
+info.param('ui.test_num', label='Comma-seperated Test Numbers (1-10)', default='1,2,3,4')
+info.param('ui.n_iter', label='Number of Iterations', default=5)
+info.param('ui.phase_comp', label='Phase compensation(deg)', default=0.)
+info.param('ui.transducer_gain', label='PHIL transducer gain', default=43.1)
 
-info.param_group('phase_jump_startup', label='IEEE 1547.1 Phase Jump Startup Time', glob=True)
-info.param('phase_jump_startup.eut_startup_time', label='EUT Startup Time (s)', default=85, glob=True)
+info.param_group('ui_startup', label='IEEE 1547.1 Unintentionnal islanding Startup Time', glob=True)
+info.param('ui_startup.eut_startup_time', label='EUT Startup Time (s)', default=85, glob=True)
 
 info.param_group('eut', label='EUT Parameters', glob=True)
 info.param('eut.phases', label='Phases', default='Single Phase', values=['Single phase', 'Split phase', 'Three phase'])

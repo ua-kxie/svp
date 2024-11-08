@@ -38,7 +38,7 @@ from svpelab import loadsim
 from svpelab import pvsim
 from svpelab import das
 from svpelab import der
-from svpelab import hil
+from svpelab import hil as hil_lib
 from svpelab import p1547
 import script
 from svpelab import result as rslt
@@ -151,17 +151,20 @@ def test_run():
         a) Connect the EUT according to the instructions and specifications provided by the manufacturer.
         """
         # initialize HIL environment, if necessary
-        chil = hil.hil_init(ts)
-        if chil is not None:
-            chil.config()
+        hil = hil_lib.hil_init(ts)
+
+        if hil is not None:
+            ts.log('Start simulation of hil')
+            hil.start_simulation()
+
 
         # grid simulator is initialized with test parameters and enabled
-        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': chil})  # Turn on AC so the EUT can be initialized
+        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': hil})  # Turn on AC so the EUT can be initialized
         if grid is not None:
             grid.voltage(v_nom)
 
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': chil})
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
@@ -171,7 +174,7 @@ def test_run():
         das_points = ActiveFunction.get_sc_points()
 
         # initialize data acquisition
-        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': chil}) 
+        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil}) 
 
         if daq is not None:
             daq.sc['V_MEAS'] = 100
@@ -183,20 +186,21 @@ def test_run():
             daq.sc['event'] = 'None'
             ts.log('DAS device: %s' % daq.info())
 
+        ActiveFunction.set_daq(daq)
         """
         b) Set all voltage trip parameters to the widest range of adjustability. Disable all reactive/active power
         control functions.
         """
         # it is assumed the EUT is on
-        eut = der.der_init(ts, support_interfaces={'hil': chil}) 
+        eut = der.der_init(ts, support_interfaces={'hil': hil}) 
         if eut is not None:
             eut.config()
             # disable volt/var curve
             #eut.volt_var(params={'Ena': False})
             ts.log_debug('If not done already, set L/HVRT and trip parameters to the widest range of adjustability.')
 
-        # Special considerations for CHIL ASGC/Typhoon startup #
-        if chil is not None:
+        # Special considerations for hil ASGC/Typhoon startup #
+        if hil is not None:
             if eut is not None:
                 if eut.measurements() is not None:
                     inv_power = eut.measurements().get('W')
@@ -239,9 +243,6 @@ def test_run():
         """
         t) Steps d) through q) may be repeated to test additional communication protocols - Run with another test.
         """
-        if chil is not None:
-            ts.log('Start simulation of CHIL')
-            chil.start_simulation()
         # For PV systems, this requires that Vmpp = Vin_nom and Pmpp = Prated.
         for v_in_label, v_in in v_in_targets.items():
             ts.log('Starting test %s at v_in = %s' % (v_in_label, v_in))
@@ -264,7 +265,7 @@ def test_run():
                 # Setting up step label
                 ActiveFunction.set_step_label(starting_label='F')
 
-                q_target *= var_rated
+                q_target = var_rated
 
                 ts.log('Starting data capture for fixed Q relative = %s' % q_target)
 
@@ -303,15 +304,15 @@ def test_run():
                 if pv is not None:
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Power step: setting PV simulator power to %s (%s)' % (p_min, step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     if p_rated * 0.2 > p_min:
                         p_target = p_min
                     else:
                         p_target = p_rated * 0.2
                     step_dict = {'V': v_nom, 'P': round(p_target,2), 'Q': q_target}
                     pv.power_set(step_dict['P'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 """
@@ -320,15 +321,15 @@ def test_run():
                 if pv is not None:
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Power step: setting PV simulator power to %s (%s)' % (p_min, step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     if p_rated * 0.05 > p_min:
                         p_target = p_min
                     else:
                         p_target = p_rated * 0.05
                     step_dict = {'V': v_nom, 'P': round(p_target,2), 'Q': q_target}
                     pv.power_set(step_dict['P'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 """
@@ -337,54 +338,54 @@ def test_run():
                 if pv is not None:
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Power step: setting PV simulator power to %s (%s)' % (p_rated, step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     step_dict = {'V': v_nom, 'P': p_rated, 'Q': q_target}
                     pv.power_set(step_dict['P'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 if grid is not None:
                     #   J) Step the AC test source voltage to (VL + av)
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % ((v_min + a_v), step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     step_dict = {'V': v_min + a_v, 'P': p_rated, 'Q': q_target}
                     grid.voltage(step_dict['V'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
 
                     #   k) Step the AC test source voltage to (VH - av)
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % ((v_max - a_v), step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     step_dict = {'V': v_max - a_v, 'P': p_rated, 'Q': q_target}
                     grid.voltage(step_dict['V'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                     #   l) Step the AC test source voltage to (VL + av)
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % ((v_min + a_v), step_label))
-                    ActiveFunction.start(daq=daq, step_label=step_label)
+                    ActiveFunction.start( step_label=step_label)
                     step_dict = {'V': v_min + a_v, 'P': p_rated, 'Q': q_target}
                     grid.voltage(step_dict['V'])
-                    ActiveFunction.record_timeresponse(daq=daq)
-                    ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                    ActiveFunction.record_timeresponse()
+                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                     if phases == 'Three phase':
                         #   m) For multiphase units, step the AC test source voltage to VN
                         step_label = ActiveFunction.get_step_label()
                         ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_nom, step_label))
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         step_dict = {'V': v_nom, 'P': p_rated, 'Q': q_target}
                         grid.voltage(step_dict['V'])
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                     '''
@@ -394,11 +395,11 @@ def test_run():
                     if grid is not None and phases == 'Three phase':
                         step_label = ActiveFunction.get_step_label()
                         ts.log('Voltage step: setting Grid simulator to case A (IEEE 1547.1-Table 24)(%s)' % step_label)
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_a')
                         step_dict = {'V': v_target, 'P': p_rated, 'Q': q_target}
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                     """
@@ -408,11 +409,11 @@ def test_run():
                     if grid is not None and phases == 'Three phase':
                         step_label = ActiveFunction.get_step_label()
                         ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_nom, step_label))
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         step_dict = {'V': v_nom, 'P': p_rated, 'Q': q_target}
                         grid.voltage(step_dict['V'])
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                     """
@@ -421,11 +422,11 @@ def test_run():
                     if grid is not None and phases == 'Three phase':
                         step_label = ActiveFunction.get_step_label()
                         ts.log('Voltage step: setting Grid simulator to case B (IEEE 1547.1-Table 24)(%s)' % step_label)
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_b')
                         step_dict = {'V': v_target, 'P': p_rated, 'Q': q_target}
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                     """
@@ -434,11 +435,11 @@ def test_run():
                     if grid is not None and phases == 'Three phase':
                         step_label = ActiveFunction.get_step_label()
                         ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_nom, step_label))
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         step_dict = {'V': v_nom, 'P': p_rated, 'Q': q_target}
                         grid.voltage(step_dict['V'])
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                 """
@@ -501,8 +502,8 @@ def test_run():
             eut.close()
         if rs is not None:
             rs.close()
-        if chil is not None:
-            chil.close()
+        if hil is not None:
+            hil.close()
 
         if result_summary is not None:
             result_summary.close()
@@ -598,7 +599,7 @@ der.params(info)
 gridsim.params(info)
 pvsim.params(info)
 das.params(info)
-hil.params(info)
+hil_lib.params(info)
 
 
 def script_info():

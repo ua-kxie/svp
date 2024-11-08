@@ -37,7 +37,7 @@ from svpelab import loadsim
 from svpelab import pvsim
 from svpelab import das
 from svpelab import der
-from svpelab import hil
+from svpelab import hil as hil_lib
 from svpelab import result as rslt
 from svpelab import p1547
 import script
@@ -55,7 +55,7 @@ def test_run():
     grid = None
     pv = None
     eut = None
-    chil = None
+    hil = None
     result_summary = None
     dataset_filename = None
     fw_curves = []
@@ -128,16 +128,20 @@ def test_run():
         a) Connect the EUT according to the instructions and specifications provided by the manufacturer.
         '''
         # initialize HIL environment, if necessary
-        chil = hil.hil_init(ts)
-        if chil is not None:
-            chil.config()
+        hil = hil_lib.hil_init(ts)
+        hil_setup = ts.params['hil.setup']
+
+        if hil is not None and hil_setup == 'SIL':
+            ts.log('Start simulation of hil')
+            hil.start_simulation()
+
 
         # DAS soft channels
         # TODO : add to library 1547
         #das_points = {'sc': ('P_TARGET', 'P_TARGET_MIN', 'P_TARGET_MAX', 'P_MEAS', 'F_TARGET', 'F_MEAS', 'event')}
         das_points = ActiveFunction.get_sc_points()
         # initialize data acquisition system
-        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': chil}) 
+        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil}) 
         if daq is not None:
             daq.sc['P_TARGET'] = 100
             daq.sc['P_TARGET_MIN'] = 100
@@ -148,8 +152,10 @@ def test_run():
             daq.sc['event'] = 'None'
             ts.log('DAS device: %s' % daq.info())
 
+        ActiveFunction.set_daq(daq)
+
         # Configure the EUT communications
-        eut = der.der_init(ts, support_interfaces={'hil': chil}) 
+        eut = der.der_init(ts, support_interfaces={'hil': hil}) 
         '''
         b) Set all frequency trip parameters to the widest range of adjustability. 
             Disable all reactive/active power control functions.
@@ -174,7 +180,12 @@ def test_run():
         '''
         c) Set all AC test source parameters to the nominal operating voltage and frequency 
         '''
-        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': chil})  # Turn on AC so the EUT can be initialized
+
+        if hil is not None and hil_setup == 'PHIL':
+            ts.log('Start simulation of hil')
+            hil.start_simulation()
+
+        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': hil})  # Turn on AC so the EUT can be initialized
         if grid is not None:
             grid.freq(f_nom)
             if mode == 'Below':
@@ -199,7 +210,7 @@ def test_run():
         above_d) Adjust the EUT's available active power to Prated .
         below_d) ""         ""          "". Set the EUT's output power to 50% of P rated .
         '''
-        pv = pvsim.pvsim_init(ts)
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil})
         if pv is not None:
             pv.iv_curve_config(pmp=p_rated, vmp=v_nom_in)
             pv.irradiance_set(1000.)
@@ -242,9 +253,7 @@ def test_run():
 
               below_o) ""           ""              ""
             '''
-            if chil is not None:
-                    ts.log('Start simulation of CHIL')
-                    chil.start_simulation()
+
             for fw_curve in fw_curves:
                 ts.log('Starting test with characteristic curve %s' % (fw_curve))
                 ActiveFunction.reset_curve(curve=fw_curve)
@@ -275,9 +284,9 @@ def test_run():
                         params = {
                             'Ena': True,
                             'curve': fw_curve,
-                            'dbf': fw_param['dbf'],
-                            'kof': fw_param['kof'],
-                            'RspTms': fw_param['tr']
+                            'dbOF': fw_param['dbf'],
+                            'kOF': fw_param['kof'],
+                            'RspTms': fw_param['TR']
                         }
                         ts.log_debug(params)
                         settings = eut.freq_watt(params)
@@ -301,21 +310,21 @@ def test_run():
                     active power, reactive power, voltage,frequency, and current measurements. 
                     '''
                     # STD_CHANGE there should be a wait for steady state to be reached in both mode
+                    daq.data_capture(True)
                     step = 'Step F'
                     daq.sc['event'] = step
                     daq.data_sample()
                     ts.log('Wait for steady state to be reached')
                     ts.sleep(2 * fw_response_time[fw_curve])
-                    daq.data_capture(True)
 
                     for step_label, f_step in f_steps_dict.items():
-                        ActiveFunction.start(daq=daq, step_label=step_label)
+                        ActiveFunction.start( step_label=step_label)
                         ts.log('Frequency step: setting Grid simulator frequency to %s (%s)' % (f_step, step_label))
                         step_dict = {'F': f_step}
                         if grid is not None:
                             grid.freq(f_step)
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict)
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict)
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                     dataset_filename = dataset_filename + ".csv"
@@ -357,8 +366,8 @@ def test_run():
             if f_nom is not None:
                 grid.voltage(f_nom)
             grid.close()
-        if chil is not None:
-            chil.close()
+        if hil is not None:
+            hil.close()
         if eut is not None:
             #eut.volt_var(params={'Ena': False})
             #eut.volt_watt(params={'Ena': False})
@@ -451,7 +460,7 @@ der.params(info)
 gridsim.params(info)
 pvsim.params(info)
 das.params(info)
-hil.params(info)
+hil_lib.params(info)
 
 # Add the SIRFN logo
 info.logo('sirfn.png')

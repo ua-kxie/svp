@@ -164,8 +164,6 @@ def test_run():
         """
         # initialize HIL environment, if necessary
         chil = hil.hil_init(ts)
-        if chil is not None:
-            chil.config()
 
         # grid simulator is initialized with test parameters and enabled
         grid = gridsim.gridsim_init(ts, support_interfaces={'hil': chil})  # Turn on AC so the EUT can be initialized
@@ -173,7 +171,7 @@ def test_run():
             grid.voltage(v_nom)
 
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts)
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': chil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
@@ -186,6 +184,7 @@ def test_run():
 
         if daq is not None:
             ts.log('DAS device: %s' % daq.info())
+            ActiveFunction.set_daq(daq)
 
         eut = der.der_init(ts, support_interfaces={'hil': chil}) 
         if eut is not None:
@@ -313,8 +312,8 @@ def test_run():
                 ActiveFunction.set_step_label(starting_label='C')
                 step_label = ActiveFunction.get_step_label()
                 daq.sc['event'] = step
-                ActiveFunction.start(daq=daq, step_label=step_label)
-                #initial_values = ActiveFunction.get_initial_value(daq=daq, step=step)
+                ActiveFunction.start( step_label=step_label)
+                #initial_values = ActiveFunction.get_initial_value( step=step)
                 ts.log('EUT Config: setting Active Power Limit to %s (%s)' % (act_pwrs_limit, step))
                 if eut is not None:
                     # limit maximum power
@@ -329,9 +328,9 @@ def test_run():
                     )
                 step_dict = {'V': v_nom, 'F': f_nom, 'P': act_pwrs_limit}
                 #target_dict = {'P': act_pwrs_limit}
-                ActiveFunction.record_timeresponse(daq=daq)
+                ActiveFunction.record_timeresponse()
                 ts.log_debug(f'daq={daq}')
-                ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict, y_criterias_mod={'P': LAP})
+                ActiveFunction.evaluate_criterias( step_dict=step_dict, y_criterias_mod={'P': LAP})
                 result_summary.write(ActiveFunction.write_rslt_sum())
 
                 """
@@ -345,12 +344,12 @@ def test_run():
                     for f_step in f_steps:
                         step_ = step_label + "_" + str(f_step)
                         ts.log('Frequency step: setting Grid simulator frequency to %s (%s)' % (f_step, step_))
-                        ActiveFunction.start(daq=daq, step_label=step_)
-                        #initial_values = ActiveFunction.get_initial_value(daq=daq,step=step_)
+                        ActiveFunction.start( step_label=step_)
+                        #initial_values = ActiveFunction.get_initial_value(step=step_)
                         grid.freq(f_step)
                         step_dict = {'V': v_nom, 'F': f_step, 'P': act_pwrs_limit}
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict, y_criterias_mod={'P': FW})
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict, y_criterias_mod={'P': FW})
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
 
@@ -365,12 +364,12 @@ def test_run():
                     for f_step in f_steps:
                         step_ = step_label + "_" + str(f_step)
                         ts.log('Frequency step: setting Grid simulator frequency to %s (%s)' % (f_step, step_))
-                        ActiveFunction.start(daq=daq, step_label=step_)
-                        #initial_values = ActiveFunction.get_initial_value(daq=daq,step=step_)
+                        ActiveFunction.start( step_label=step_)
+                        #initial_values = ActiveFunction.get_initial_value(step=step_)
                         grid.freq(f_step)
                         step_dict = {'V': v_nom, 'F': f_step, 'P': act_pwrs_limit}
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict, y_criterias_mod={'P': FW})
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict, y_criterias_mod={'P': FW})
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
 
@@ -385,12 +384,12 @@ def test_run():
                     for v_step in v_steps:
                         step_ = step_label + "_" + str(v_step)
                         ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_step, step_))
-                        #initial_values = ActiveFunction.get_initial_value(daq=daq,step=step_)
-                        ActiveFunction.start(daq=daq, step_label=step_)
+                        #initial_values = ActiveFunction.get_initial_value(step=step_)
+                        ActiveFunction.start( step_label=step_)
                         grid.voltage(v_step)
                         step_dict = {'V': v_step, 'F': f_nom, 'P': act_pwrs_limit}
-                        ActiveFunction.record_timeresponse(daq=daq)
-                        ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict, y_criterias_mod={'P': VW})
+                        ActiveFunction.record_timeresponse()
+                        ActiveFunction.evaluate_criterias( step_dict=step_dict, y_criterias_mod={'P': VW})
                         result_summary.write(ActiveFunction.write_rslt_sum())
 
                 ts.log('Sampling complete')

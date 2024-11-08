@@ -3,7 +3,6 @@
     <param name="gridsim.opal.phases" type="int">1</param>
     <param name="gridsim.opal.vout_scale" type="string">3.0,3.0,3.0</param>
     <param name="vv.test_1_t_r" type="float">10.0</param>
-    <param name="der.Opal.sec_crtl_frz_time" type="string">10.0</param>
     <param name="gridsim.opal.vin_scale" type="string">20.0,20.0,20.0</param>
     <param name="gridsim.opal.f_min" type="float">45.0</param>
     <param name="eut.f_min" type="float">56.0</param>
@@ -32,7 +31,6 @@
     <param name="vv.test_2" type="string">Disabled</param>
     <param name="vv.test_3" type="string">Disabled</param>
     <param name="gridsim.auto_config" type="string">Disabled</param>
-    <param name="pvsim.mode" type="string">Disabled</param>
     <param name="hil.opal.workspace_path" type="string">E:\Kai_Xie\RTLABWKSP\</param>
     <param name="hil.opal.project_dir_path" type="string">E:\Kai_Xie\RTLABWKSP\SVP1\SVP1.llp</param>
     <param name="das.opal.data_dir" type="string">E:\Kai_Xie\output\data</param>
@@ -45,11 +43,12 @@
     <param name="das.opal.datalogger_ena" type="string">No</param>
     <param name="hil.opal.hil_config_compile" type="string">No</param>
     <param name="vv.mode" type="string">Normal</param>
-    <param name="der.mode" type="string">Opal</param>
     <param name="gridsim.mode" type="string">Opal</param>
     <param name="das.mode" type="string">Opal</param>
     <param name="hil.mode" type="string">Opal-RT</param>
     <param name="das.opal.map" type="string">Opal_Fast_1547</param>
+    <param name="der.mode" type="string">Pass</param>
+    <param name="pvsim.mode" type="string">Pass</param>
     <param name="das.opal.wfm_chan_list" type="string">PhaseJump</param>
     <param name="hil.opal.target_name" type="string">RTServer</param>
     <param name="hil.opal.rt_lab_project" type="string">SVP1.llp</param>

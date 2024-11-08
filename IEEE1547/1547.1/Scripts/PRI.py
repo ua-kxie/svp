@@ -144,8 +144,6 @@ def test_run():
         """
         # initialize HIL environment, if necessary
         chil = hil.hil_init(ts)
-        if chil is not None:
-            chil.config()
 
         # grid simulator is initialized with test parameters and enabled
         grid = gridsim.gridsim_init(ts, support_interfaces={'hil': chil})  # Turn on AC so the EUT can be initialized
@@ -153,7 +151,7 @@ def test_run():
             grid.voltage(v_nom)
 
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts)
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': chil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
@@ -161,6 +159,7 @@ def test_run():
 
         # DAS soft channels
         das_points = ActiveFunction.get_sc_points()
+        ActiveFunction.set_daq(daq)
 
         # initialize data acquisition
         daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'pvsim': pv, 'hil': chil})
@@ -388,14 +387,14 @@ def test_run():
                 ts.log('Steps: %s (%s)' % (step_dict, step_label))
 
 
-                ActiveFunction.start(daq=daq, step_label=step_label)
+                ActiveFunction.start( step_label=step_label)
                 if grid is not None:
                     grid.freq(step_dict['F'])
                     grid.voltage(step_dict['V'])
 
                 ts.log_debug('current mode %s' % current_mode)
-                ActiveFunction.record_timeresponse(daq=daq)
-                ActiveFunction.evaluate_criterias(daq=daq, step_dict=step_dict, y_criterias_mod={'Q': current_mode})
+                ActiveFunction.record_timeresponse()
+                ActiveFunction.evaluate_criterias( step_dict=step_dict, y_criterias_mod={'Q': current_mode})
                 result_summary.write(ActiveFunction.write_rslt_sum())
                 i += 1
 
