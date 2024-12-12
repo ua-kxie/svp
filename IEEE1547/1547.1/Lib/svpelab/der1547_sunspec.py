@@ -1175,7 +1175,7 @@ class DER1547(der1547.DER1547):
             der_pts.write()  # request enabling the new curve
             self.ts.sleep(2)  # wait to reread the AdptCrvRslt register
             curve_enable_result = self.get_qv()['qv_write_result']
-            if curve_enable_result == 'IN_PROGRESS' or curve_enable_result == 'FAILED':
+            if curve_enable_result in ('IN_PROGRESS', 'FAILED'):
                 self.ts.log_warning('VV Write Result: %s' % curve_enable_result)
 
         return params
@@ -1356,7 +1356,7 @@ class DER1547(der1547.DER1547):
                 der_pts.write()  # request enabling the new curve
                 self.ts.sleep(2)  # wait to reread the AdptCrvRslt register
                 curve_enable_result = self.get_qp()['qp_write_result']
-                if curve_enable_result == 'IN_PROGRESS' or curve_enable_result == 'FAILED':
+                if curve_enable_result in ('IN_PROGRESS', 'FAILED'):
                     self.ts.log_warning('WV Write Result: %s' % curve_enable_result)
 
             return params
@@ -1511,7 +1511,7 @@ class DER1547(der1547.DER1547):
             der_pts.write()  # request enabling the new curve
             self.ts.sleep(2)  # wait to reread the AdptCrvRslt register
             curve_enable_result = self.get_pv()['pv_write_result']
-            if curve_enable_result == 'IN_PROGRESS' or curve_enable_result == 'FAILED':
+            if curve_enable_result in ('IN_PROGRESS', 'FAILED'):
                 self.ts.log_warning('VV Write Result: %s' % curve_enable_result)
 
         return params
@@ -1849,7 +1849,7 @@ class DER1547(der1547.DER1547):
             der_pts.write()  # request enabling the new curve
             self.ts.sleep(2)  # wait to reread the AdptCrvRslt register
             curve_enable_result = self.get_pf()['pf_write_result']
-            if curve_enable_result == 'IN_PROGRESS' or curve_enable_result == 'FAILED':
+            if curve_enable_result in ('IN_PROGRESS', 'FAILED'):
                 self.ts.log_warning('VV Write Result: %s' % curve_enable_result)
 
         return params
@@ -2171,7 +2171,7 @@ class DER1547(der1547.DER1547):
             der_pts.write()  # request enabling the new curve
             self.ts.sleep(2)  # wait to reread the AdptCrvRslt register
             curve_enable_result = self.get_any_ride_thru_trip_or_mc(der_pts, group, curve_type)['write_result']
-            if curve_enable_result == 'IN_PROGRESS' or curve_enable_result == 'FAILED':
+            if curve_enable_result in ('IN_PROGRESS', 'FAILED'):
                 self.ts.log_warning('Write Result: %s' % curve_enable_result)
 
         return params

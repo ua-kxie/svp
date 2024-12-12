@@ -594,7 +594,7 @@ class GridSim(gridsim.GridSim):
         """
         if voltage is not None:
             voltage = max(voltage)  # voltage is a triplet but Ametek only takes one value
-            if voltage == 150 or voltage == 300 or voltage == 600:
+            if voltage in (150, 300, 600):
                 self.cmd('volt:rang %0.0f\n' % voltage)
             else:
                 raise gridsim.GridSimError('Invalid Max Voltage %s, must be 150, 300 or 600 V.' % str(voltage))

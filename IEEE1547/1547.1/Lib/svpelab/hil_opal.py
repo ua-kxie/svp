@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Questions can be directed to support@sunspec.org
 """
 import os
+
 try:
     import hil
 except ImportError as e:
@@ -38,6 +39,7 @@ except ImportError as e:
 
 import sys
 from time import sleep
+
 # import glob
 # import numpy as np
 
@@ -100,6 +102,7 @@ class HIL(hil.HIL):
     """
     Opal_RT HIL implementation - The default.
     """
+
     def __init__(self, ts, group_name):
         hil.HIL.__init__(self, ts, group_name)
         rt_version = self._param_value('rt_lab_version')
@@ -321,7 +324,7 @@ class HIL(hil.HIL):
         self.control_panel_info(state=1)  # GetSystemControl
 
         return 1
-    
+
     def close(self):
         """
         Close any open communications resources associated with the HIL.
@@ -351,7 +354,7 @@ class HIL(hil.HIL):
         :return: None
         """
         try:
-            if state == 1 or state == 0:
+            if state in (1, 0):
                 self.RtlabApi.GetSystemControl(state)
             else:
                 self.ts.log_warning('Incorrect GetSystemControl state provided: state = %s' % state)
@@ -629,7 +632,8 @@ class HIL(hil.HIL):
                     self.RtlabApi.RegisterDisplay(1)
 
                     print(("Transferring the script :\n%s \nto the physical node %s" % (scriptFullPath, TargetName)))
-                    self.RtlabApi.PutTargetFile(TargetName, scriptFullPath, "/home/ntuser/", self.RtlabApi.OP_TRANSFER_ASCII, 0)
+                    self.RtlabApi.PutTargetFile(TargetName, scriptFullPath, "/home/ntuser/",
+                                                self.RtlabApi.OP_TRANSFER_ASCII, 0)
 
                     # Executing the script on the target
                     self.RtlabApi.StartTargetPythonScript(TargetName, "/home/ntuser/myscript.py", "Hello World", "")
@@ -660,7 +664,8 @@ class HIL(hil.HIL):
 
         if parameters is not None:
             for p, v in parameters:
-                self.ts.log_debug('Setting parameter %s = %s (overruns : %s)' % (p, v, self.RtlabApi.ATT_DETECT_OVERRUNS))
+                self.ts.log_debug(
+                    'Setting parameter %s = %s (overruns : %s)' % (p, v, self.RtlabApi.ATT_DETECT_OVERRUNS))
                 self.set_params(p, v)
 
     def get_parameters(self, verbose=False):
@@ -690,7 +695,8 @@ class HIL(hil.HIL):
         :param variableName: name of the variable
         :return: value string
         """
-        attributeNumber = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE, self.rt_lab_model + '/' + variableName)
+        attributeNumber = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
+                                                     self.rt_lab_model + '/' + variableName)
         value = self.RtlabApi.GetAttribute(attributeNumber, self.RtlabApi.ATT_MATRIX_VALUE)
         return str(value)
 
@@ -704,13 +710,14 @@ class HIL(hil.HIL):
         :return: value of variable as measured from the
         """
         self.ts.log_debug('set_matlab_variable_value() variableName = %s, valueToSet = %s' %
-                           (variableName, valueToSet))
+                          (variableName, valueToSet))
         try:
             if valueToSet == 100 and variableName == 'IRRADIANCE':
-                attributeNumber1 = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE, self.rt_lab_model + '/' + variableName)
+                attributeNumber1 = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
+                                                              self.rt_lab_model + '/' + variableName)
                 value1 = self.RtlabApi.GetAttribute(attributeNumber1, self.RtlabApi.ATT_MATRIX_VALUE)
                 attributeNumber2 = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
-                                                         self.rt_lab_model + '/' + 'VOLTAGE')
+                                                              self.rt_lab_model + '/' + 'VOLTAGE')
                 value2 = self.RtlabApi.GetAttribute(attributeNumber2, self.RtlabApi.ATT_MATRIX_VALUE)
                 self.ts.log_debug(f'Voltage value before change {value2} V')
                 value = value1
@@ -722,10 +729,10 @@ class HIL(hil.HIL):
                     self.RtlabApi.SetAttribute(attributeNumber1, self.RtlabApi.ATT_MATRIX_VALUE, valueToSet)
                     self.RtlabApi.SetAttribute(attributeNumber2, self.RtlabApi.ATT_MATRIX_VALUE, (0.9, 0.9, 0.9))
                     attributeNumber1 = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
-                                                             self.rt_lab_model + '/' + variableName)
+                                                                  self.rt_lab_model + '/' + variableName)
                     value1 = self.RtlabApi.GetAttribute(attributeNumber1, self.RtlabApi.ATT_MATRIX_VALUE)
                     attributeNumber2 = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
-                                                             self.rt_lab_model + '/' + 'VOLTAGE')
+                                                                  self.rt_lab_model + '/' + 'VOLTAGE')
                     value2 = self.RtlabApi.GetAttribute(attributeNumber2, self.RtlabApi.ATT_MATRIX_VALUE)
                     self.ts.log_debug(f'Voltage value after change {value2} V')
                     value = value1
@@ -734,7 +741,7 @@ class HIL(hil.HIL):
                         f'matlab variable {variableName} was already configure to {valueToSet} (OVERUNS : {overruns})')
             else:
                 attributeNumber = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
-                                                        self.rt_lab_model + '/' + variableName)
+                                                             self.rt_lab_model + '/' + variableName)
                 value = self.RtlabApi.GetAttribute(attributeNumber, self.RtlabApi.ATT_MATRIX_VALUE)
                 overruns = self.get_overruns()
                 if valueToSet != value:
@@ -743,7 +750,7 @@ class HIL(hil.HIL):
                     self.ts.sleep(0.005)
                     self.RtlabApi.SetAttribute(attributeNumber, self.RtlabApi.ATT_MATRIX_VALUE, valueToSet)
                     attributeNumber = self.RtlabApi.FindObjectId(self.RtlabApi.OP_TYPE_VARIABLE,
-                                                            self.rt_lab_model + '/' + variableName)
+                                                                 self.rt_lab_model + '/' + variableName)
                     value = self.RtlabApi.GetAttribute(attributeNumber, self.RtlabApi.ATT_MATRIX_VALUE)
                 else:
                     self.ts.log_debug(
@@ -797,7 +804,6 @@ class HIL(hil.HIL):
     def get_overruns(self):
 
         return self.RtlabApi.GetSignalsByName(self.rt_lab_model + '/SM_Source/overruns/port1')
-
 
     def get_acq_signals_raw(self, signal_map=None, verbose=False):
         """
@@ -945,7 +951,7 @@ class HIL(hil.HIL):
             control_signals = []
             for sig in range(len(signals)):
                 control_signals.append((signals[sig][0], signals[sig][1], signals[sig][2], signals[sig][3],
-                                       signals[sig][6]))
+                                        signals[sig][6]))
                 if verbose:
                     self.ts.log_debug('Sig #%d: Type: %s, Path: %s, Label: %s, value: %s' %
                                       (signals[sig][1], signals[sig][0], signals[sig][2], signals[sig][3],
@@ -1116,7 +1122,7 @@ class HIL(hil.HIL):
         model_name = model_name.rstrip('.mdl').rstrip('.slx')
 
         self.time_sig_path = model_name + time_path
-        self.ts.log_debug(f'Set the time signal path to {self.time_sig_path } ')
+        self.ts.log_debug(f'Set the time signal path to {self.time_sig_path} ')
 
     def get_time(self):
         """
@@ -1140,11 +1146,13 @@ class HIL(hil.HIL):
 
 if __name__ == "__main__":
     import time
+
     import_path = "C://OPAL-RT//RT-LAB//2022.1//common//python"
     try:
         sys.path.insert(0, import_path)
         import RtlabApi
         import OpalApiPy
+
         print('RtlabApi Imported. Using %s' % import_path)
     except ImportError as e:
         print('RtlabApi Import Error. Check the version number. Using path = %s' % import_path)

@@ -110,7 +110,7 @@ class HIL(hil.HIL):
         self.pv_name = ts.param_value('hil.typhoon.pv_name')
         self.settings_file_name = ts.param_value('hil.typhoon.setting_name')
         self.hil_model_dir = ts.param_value('hil.typhoon.hil_working_dir')
-        self.hil_model_dir = self.hil_model_dir.replace('\\', '/')+'/'
+        self.hil_model_dir = self.hil_model_dir.replace('\\', '/') + '/'
         self.debug = False
 
         try:
@@ -187,7 +187,7 @@ class HIL(hil.HIL):
                     self.ts.log("Model loaded after {} tries".format(i))
                     return True
                 else:
-                    self.ts.log("Retry {}/4: Trying to load HIL Model {}".format(i,self.model_name))
+                    self.ts.log("Retry {}/4: Trying to load HIL Model {}".format(i, self.model_name))
                     # We will delete the Entire compiler output folder
                     import shutil
                     shutil.rmtree(self.hil_model_dir + self.model_name + r" Target files/", ignore_errors=True)
@@ -229,7 +229,7 @@ class HIL(hil.HIL):
         except Exception as e:
             self.ts.log('Attempted to perturb PV1 irradiance to get inverter to start. This failed. %s' % e)
         for i in range(1, sleeptime):
-            print(("Waiting another %d seconds until the inverter starts." % (sleeptime-i)))
+            print(("Waiting another %d seconds until the inverter starts." % (sleeptime - i)))
             self.ts.sleep(1)
 
     def load_schematic(self):
@@ -298,7 +298,6 @@ class HIL(hil.HIL):
         else:
             settings_file = self.hil_model_dir + self.settings_file_name + r".runx"
 
-
         self.ts.log("Model File: %s" % settings_file)
 
         if os.path.isfile(settings_file):
@@ -329,8 +328,8 @@ class HIL(hil.HIL):
         '''
         cp.start_simulation()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
 
     #         self.auto_config = ts.param_value('hil.typhoon.auto_config')
     #         self.eut_nominal_power = ts.param_value('hil.typhoon.eut_nominal_power')
@@ -366,18 +365,11 @@ if __name__ == "__main__":
 
         pass
 
-    e = ts()
 
+    e = ts()
 
     t = HIL(e)
     t.config()
-
-
-
-
-
-
-
 
     # import sys
     # import time

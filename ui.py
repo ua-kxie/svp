@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 
-
-
 """
 
 Copyright 2018, SunSpec Alliance
@@ -24,7 +22,6 @@ import textwrap
 from builtins import input
 from builtins import range
 
-
 import os
 import sys
 import multiprocessing
@@ -45,7 +42,6 @@ import xlsxwriter
 import numpy
 import wxmplot
 import shutil
-
 
 import app as svp
 import result as rslt
@@ -93,7 +89,6 @@ OP_OPEN = 19
 OP_RESULT = 20
 OP_PKG = 30
 
-
 OP_ID_MIN = 1
 OP_ID_MAX = 20
 
@@ -105,6 +100,7 @@ ITEM_SUITE_MEMBERS = '__suite_members__'
 
 run_context_list = []
 
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -114,6 +110,7 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
 
 images_path = resource_path("images")
 
@@ -160,11 +157,12 @@ def get_wx_icon(exe, index):
     return icon
 '''
 
+
 def pil_to_image(pil, alpha=True):
     """Convert PIL Image to wx.Image."""
     if alpha:
         image = wx.EmptyImage(*pil.size)
-        image.SetData( pil.convert( "RGB").tostring() )
+        image.SetData(pil.convert("RGB").tostring())
         image.SetAlphaData(pil.convert("RGBA").tostring()[3::4])
     else:
         image = wx.EmptyImage(pil.size[0], pil.size[1])
@@ -172,6 +170,7 @@ def pil_to_image(pil, alpha=True):
         data = new_image.tostring()
         image.SetData(data)
     return image
+
 
 '''
 def get_icon_image(filename):
@@ -194,6 +193,7 @@ images = {}
 result_to_image = {}
 image_open = None
 image_closed = None
+
 
 def init_image_list():
     global image_list, images, result_to_image, image_open, image_closed
@@ -286,6 +286,7 @@ def init_image_list():
     images['xlsx'] = image_list.Add(bm)
     '''
 
+
 def result_image(result):
     image = None
     if result.type == rslt.RESULT_TYPE_FILE:
@@ -299,11 +300,14 @@ def result_image(result):
         image = result_to_image.get(result.type, -1)
     return image
 
+
 class UIError(Exception):
     pass
 
+
 def verify_delete(name):
     pass
+
 
 def makedirs(path):
     try:
@@ -315,8 +319,8 @@ def makedirs(path):
 
 class EditSuiteDialog(wx.Dialog):
     def __init__(self, parent, entity):
-        wx.Dialog.__init__(self, None, -1, 'Edit Suite - %s' % (entity.name), size=(900,500),
-                           style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        wx.Dialog.__init__(self, None, -1, 'Edit Suite - %s' % (entity.name), size=(900, 500),
+                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.entity = entity
         self.suite = None
         self.result = None
@@ -342,21 +346,21 @@ class EditSuiteDialog(wx.Dialog):
 
         self.members_label = wx.Panel(window, -1)
         open_bitmap = wx.StaticBitmap(parent=self.members_label, name=ITEM_OPEN_PREFIX + ITEM_SUITE_MEMBERS,
-                                      bitmap=wx.Bitmap(self.open_image), pos=(0,0))
+                                      bitmap=wx.Bitmap(self.open_image), pos=(0, 0))
         open_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group_panel)
         closed_bitmap = wx.StaticBitmap(parent=self.members_label, name=ITEM_CLOSED_PREFIX + ITEM_SUITE_MEMBERS,
-                                        bitmap=wx.Bitmap(self.closed_image), pos=(0,2))
+                                        bitmap=wx.Bitmap(self.closed_image), pos=(0, 2))
         closed_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group_panel)
         open_bitmap.group_toggle = closed_bitmap
         closed_bitmap.group_toggle = open_bitmap
-        text = wx.StaticText(self.members_label, -1, 'Suite Members', pos=(20,2))
+        text = wx.StaticText(self.members_label, -1, 'Suite Members', pos=(20, 2))
         font = text.GetFont()
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         text.SetFont(font)
         text.Wrap(TEXT_WRAP)
 
         panel_name = ITEM_SUITE_MEMBERS
-        self.members_panel = wx.Panel(window, name=panel_name, size=(0,250))
+        self.members_panel = wx.Panel(window, name=panel_name, size=(0, 250))
         self.members_panel_sizer = wx.BoxSizer(wx.VERTICAL)
         self.members_panel.SetSizer(self.members_panel_sizer)
         self.members_box = wx.StaticBox(self.members_panel)
@@ -364,8 +368,8 @@ class EditSuiteDialog(wx.Dialog):
         self.members_panel_sizer.Add(members_box_sizer, 1, wx.EXPAND)
         self.members_label.suite_group_panel = self.members_panel
 
-        self.members_tree = treectrl.CustomTreeCtrl(self.members_panel, agwStyle=(wx.TR_HIDE_ROOT|wx.TR_HAS_BUTTONS|
-                                                                      wx.TR_NO_LINES|wx.TR_HAS_VARIABLE_ROW_HEIGHT))
+        self.members_tree = treectrl.CustomTreeCtrl(self.members_panel, agwStyle=(wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS |
+                                                                                  wx.TR_NO_LINES | wx.TR_HAS_VARIABLE_ROW_HEIGHT))
         self.members_button_up = wx.Button(self.members_panel, id=-1, label='Move Up')
         self.members_button_up.Bind(wx.EVT_BUTTON, self.OnUp)
         self.members_button_down = wx.Button(self.members_panel, id=-1, label='Move Down')
@@ -379,7 +383,8 @@ class EditSuiteDialog(wx.Dialog):
         self.members_tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelectionChanged)
 
         self.members_avail_tree = treectrl.CustomTreeCtrl(self.members_panel,
-                                                          agwStyle=(wx.TR_HIDE_ROOT|wx.TR_HAS_BUTTONS|wx.TR_NO_LINES))
+                                                          agwStyle=(
+                                                                  wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_NO_LINES))
         self.members_avail_tree.AssignImageList(entity.entity_tree.image_list)
         self.members_avail_tree.SetBackgroundColour('white')
         self.members_avail_tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnAvailSelectionChanged)
@@ -424,17 +429,17 @@ class EditSuiteDialog(wx.Dialog):
 
         members_sizer = wx.BoxSizer(wx.VERTICAL)
         members_button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        members_button_sizer.Add(self.members_button_up, 0, wx.ALIGN_LEFT|wx.ALL, 5)
-        members_button_sizer.Add(self.members_button_down, 0, wx.ALIGN_LEFT|wx.ALL, 5)
-        members_button_sizer.Add(self.members_button_remove, 0, wx.ALIGN_LEFT|wx.ALL, 5)
-        members_sizer.Add(self.members_tree, 1, wx.EXPAND|wx.RIGHT, 15)
+        members_button_sizer.Add(self.members_button_up, 0, wx.ALIGN_LEFT | wx.ALL, 5)
+        members_button_sizer.Add(self.members_button_down, 0, wx.ALIGN_LEFT | wx.ALL, 5)
+        members_button_sizer.Add(self.members_button_remove, 0, wx.ALIGN_LEFT | wx.ALL, 5)
+        members_sizer.Add(self.members_tree, 1, wx.EXPAND | wx.RIGHT, 15)
         members_sizer.Add(members_button_sizer, 0, wx.ALIGN_CENTER)
         members_avail_sizer = wx.BoxSizer(wx.VERTICAL)
         members_avail_sizer.Add(self.members_avail_tree, 1, wx.EXPAND)
-        members_avail_sizer.Add(self.members_button_add, 0, wx.ALIGN_CENTER|wx.ALL, 5)
+        members_avail_sizer.Add(self.members_button_add, 0, wx.ALIGN_CENTER | wx.ALL, 5)
 
-        members_box_sizer.Add(members_sizer, 1, wx.EXPAND|wx.LEFT|wx.TOP, 10)
-        members_box_sizer.Add(members_avail_sizer, 1, wx.EXPAND|wx.RIGHT|wx.TOP, 10)
+        members_box_sizer.Add(members_sizer, 1, wx.EXPAND | wx.LEFT | wx.TOP, 10)
+        members_box_sizer.Add(members_avail_sizer, 1, wx.EXPAND | wx.RIGHT | wx.TOP, 10)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         window_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -442,7 +447,7 @@ class EditSuiteDialog(wx.Dialog):
 
         self.params_panel = params_panel
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         params_panel.SetSizer(params_panel.panel_sizer)
         self.render(params_panel)
 
@@ -450,10 +455,10 @@ class EditSuiteDialog(wx.Dialog):
         btns.AddButton(ok)
         btns.AddButton(cancel)
         btns.Realize()
-        sizer.Add(window, 1, wx.EXPAND|wx.LEFT|wx.TOP, 15)
-        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
-        window_sizer.Add(self.members_label, 0, wx.EXPAND|wx.ALIGN_LEFT|wx.TOP)
-        window_sizer.Add(self.members_panel, 0, wx.EXPAND|wx.LEFT|wx.RIGHT|wx.BOTTOM, 20)
+        sizer.Add(window, 1, wx.EXPAND | wx.LEFT | wx.TOP, 15)
+        sizer.Add(btns, 0, wx.EXPAND | wx.ALL, 10)
+        window_sizer.Add(self.members_label, 0, wx.EXPAND | wx.ALIGN_LEFT | wx.TOP)
+        window_sizer.Add(self.members_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 20)
         window_sizer.Add(params_panel, 1, wx.EXPAND)
         window.SetSizer(window_sizer)
         self.SetSizer(sizer)
@@ -549,10 +554,10 @@ class EditSuiteDialog(wx.Dialog):
                 if group.name != script.SCRIPT_PARAM_ROOT:
                     label_panel = wx.Panel(params_panel, -1, name=group.qname)
                     open_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_OPEN_PREFIX + group.qname,
-                                                  bitmap=wx.Bitmap(self.open_image), pos=(0,0))
+                                                  bitmap=wx.Bitmap(self.open_image), pos=(0, 0))
                     open_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                     closed_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_CLOSED_PREFIX + group.qname,
-                                                    bitmap=wx.Bitmap(self.closed_image), pos=(0,2))
+                                                    bitmap=wx.Bitmap(self.closed_image), pos=(0, 2))
                     closed_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                     open_bitmap.group_toggle = closed_bitmap
                     closed_bitmap.group_toggle = open_bitmap
@@ -702,7 +707,7 @@ class EditSuiteDialog(wx.Dialog):
             row += 1
             edit_param.param_entry(entry, index)
             if param.referenced:
-                pass # bind to change, does it work for choice too?
+                pass  # bind to change, does it work for choice too?
             # value.Bind(wx.EVT_CHOICE, self.OnChoice)
         return row
 
@@ -828,7 +833,7 @@ class EditSuiteDialog(wx.Dialog):
                     filename = self.entity.absolute_filename()
                     add_filename = entity.absolute_filename()
                     suite = svp.Suite(filename=add_filename)
-                    if suite.contains_suite(self.entity.working_dir_path(),filename):
+                    if suite.contains_suite(self.entity.working_dir_path(), filename):
                         raise UIError('Adding suite will create a circular reference')
                 elif entity_type != TestEntry:
                     ### log
@@ -909,7 +914,7 @@ class EditSuiteDialog(wx.Dialog):
                 filename = self.entity.absolute_filename()
                 add_filename = entity.absolute_filename()
                 suite = svp.Suite(filename=add_filename)
-                add = not suite.contains_suite(self.entity.working_dir_path(),filename)
+                add = not suite.contains_suite(self.entity.working_dir_path(), filename)
             if add:
                 item = self.members_avail_tree.AppendItem(parent, entity.name, image=entity.image)
         if item is not None:
@@ -966,7 +971,7 @@ class EditSuiteDialog(wx.Dialog):
     def OnAvailTreeCtrlButtonDown(self, event):
         item, flags = self.members_avail_tree.HitTest(event.GetPosition())
         accept = True
-        if flags & (wx.TREE_HITTEST_ONITEMLABEL|wx.TREE_HITTEST_ONITEMICON):
+        if flags & (wx.TREE_HITTEST_ONITEMLABEL | wx.TREE_HITTEST_ONITEMICON):
             if item is not None:
                 entity = self.members_avail_tree.GetItemPyData(item)
                 if type(entity) != SuiteEntry and type(entity) != TestEntry:
@@ -1013,8 +1018,8 @@ class EditParam(object):
 
 class EditTestDialog(wx.Dialog):
     def __init__(self, parent, entity, test_script):
-        wx.Dialog.__init__(self, None, -1, 'Edit Test - %s' % (test_script.config.name), size=(900,500),
-                           style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        wx.Dialog.__init__(self, None, -1, 'Edit Test - %s' % (test_script.config.name), size=(900, 500),
+                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.parent = parent
         self.entity = entity
         self.test_script = test_script
@@ -1046,11 +1051,11 @@ class EditTestDialog(wx.Dialog):
         params_panel.SetScrollbars(1, 1, 2000, 2000)
         params_panel.SetDoubleBuffered(True)
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         # params_panel.SetBackgroundColour('white')
 
-        sizer.Add(params_panel, 1, wx.EXPAND|wx.LEFT|wx.TOP, 15)
-        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, 15)
+        sizer.Add(params_panel, 1, wx.EXPAND | wx.LEFT | wx.TOP, 15)
+        sizer.Add(btns, 0, wx.EXPAND | wx.ALL, 15)
         self.SetSizer(sizer)
         params_panel.SetSizer(params_panel.panel_sizer)
 
@@ -1155,10 +1160,10 @@ class EditTestDialog(wx.Dialog):
             if group.name != script.SCRIPT_PARAM_ROOT:
                 label_panel = wx.Panel(params_panel, -1, name=group.qname)
                 open_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_OPEN_PREFIX + group.qname,
-                                              bitmap=wx.Bitmap(self.open_image), pos=(0,0))
+                                              bitmap=wx.Bitmap(self.open_image), pos=(0, 0))
                 open_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                 closed_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_CLOSED_PREFIX + group.qname,
-                                                bitmap=wx.Bitmap(self.closed_image), pos=(0,2))
+                                                bitmap=wx.Bitmap(self.closed_image), pos=(0, 2))
                 closed_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                 open_bitmap.group_toggle = closed_bitmap
                 closed_bitmap.group_toggle = open_bitmap
@@ -1274,7 +1279,7 @@ class EditTestDialog(wx.Dialog):
             row += 1
             edit_param.param_entry(entry, index)
             if param.referenced:
-                pass # bind to change, does it work for choice too?
+                pass  # bind to change, does it work for choice too?
             # value.Bind(wx.EVT_CHOICE, self.OnChoice)
         return row
 
@@ -1358,6 +1363,7 @@ class EditTestDialog(wx.Dialog):
                 else:
                     self.params[name] = p.param_value()
 
+
 class NewTestDialog(wx.Dialog):
     def __init__(self, parent, entity_tree, entity, title='New Test'):
         wx.Dialog.__init__(self, None, -1, title, size=(400, 400))
@@ -1381,19 +1387,19 @@ class NewTestDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnCancel, id=wx.ID_CANCEL)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(wx.StaticText(self, -1, 'Test Name:'), 0, wx.ALIGN_LEFT|wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 15)
+        sizer.Add(wx.StaticText(self, -1, 'Test Name:'), 0, wx.ALIGN_LEFT | wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT, 15)
         self.test_name = wx.TextCtrl(self, -1)
         self.test_name.SetFocus()
-        sizer.Add(self.test_name, 0, wx.EXPAND|wx.LEFT|wx.RIGHT, 15)
-        sizer.Add(wx.StaticText(self, -1, 'Script:'), 0, wx.ALIGN_LEFT|wx.EXPAND|wx.LEFT|wx.TOP, 15)
-        sizer.Add(self.tree, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, 15)
+        sizer.Add(self.test_name, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
+        sizer.Add(wx.StaticText(self, -1, 'Script:'), 0, wx.ALIGN_LEFT | wx.EXPAND | wx.LEFT | wx.TOP, 15)
+        sizer.Add(self.tree, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 15)
         self.script_path = wx.TextCtrl(self, -1)
-        sizer.Add(self.script_path, 0, wx.EXPAND|wx.RIGHT|wx.LEFT|wx.TOP, 15)
+        sizer.Add(self.script_path, 0, wx.EXPAND | wx.RIGHT | wx.LEFT | wx.TOP, 15)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(ok)
         btns.AddButton(cancel)
         btns.Realize()
-        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, 15)
+        sizer.Add(btns, 0, wx.EXPAND | wx.ALL, 15)
         self.SetSizer(sizer)
         self.Layout()
 
@@ -1433,7 +1439,7 @@ class NewTestDialog(wx.Dialog):
                 path = entity.path()
                 path.append(entity.name)
                 i = path.index(svp.SCRIPTS_DIR)
-                name = script.PATH_SEP.join(path[i+1:])
+                name = script.PATH_SEP.join(path[i + 1:])
                 self.script_path.SetValue(name)
             except Exception as e:
                 raise UIError('Error creating script path: %s' % str(e))
@@ -1441,7 +1447,7 @@ class NewTestDialog(wx.Dialog):
     def OnTreeCtrlLeftDown(self, event):
         item, flags = self.tree.HitTest(event.GetPosition())
         accept = True
-        if flags & (wx.TREE_HITTEST_ONITEMLABEL|wx.TREE_HITTEST_ONITEMICON):
+        if flags & (wx.TREE_HITTEST_ONITEMLABEL | wx.TREE_HITTEST_ONITEMICON):
             if item is not None:
                 entity = self.tree.GetItemPyData(item)
                 if type(entity) != ScriptEntry:
@@ -1451,7 +1457,6 @@ class NewTestDialog(wx.Dialog):
 
 
 class EntityTree(treectrl.CustomTreeCtrl):
-
     popup_menu_new_items = [(wx.ID_ANY, 'Directory...', '', None, OP_NEW_DIR),
                             (wx.ID_ANY, 'Suite...', '', None, OP_NEW_SUITE),
                             (wx.ID_ANY, 'Test...', '', None, OP_NEW_TEST)]
@@ -1460,27 +1465,27 @@ class EntityTree(treectrl.CustomTreeCtrl):
                             (wx.ID_ANY, 'Test...', '', None, OP_ADD_TEST)]
 
     popup_menu_items = [(wx.ID_ANY, 'New', '', popup_menu_new_items, None),
-                  (wx.ID_ANY, 'Open', '', None, OP_OPEN),
-                  (wx.ID_ANY, '', '', None, None),
-                  (wx.ID_ANY, 'Copy', '', None, OP_COPY),
-                  (wx.ID_ANY, 'Edit', '', None, OP_EDIT),
-                  (wx.ID_ANY, 'Move/Rename', '', None, OP_MOVE),
-                  (wx.ID_ANY, 'Rescan', '', None, OP_RESCAN),
-                  (wx.ID_ANY, '', '', None, None),
-                  (wx.ID_DELETE, 'Delete', '', None, OP_DELETE),
-                  (wx.ID_ANY, 'Delete All', '', None, OP_DELETE_ALL),
-                  (wx.ID_REMOVE, 'Remove', '', None, OP_REMOVE),
-                  (wx.ID_ANY, '', '', None, None),
-                  # (wx.ID_ANY, 'Add', '', popup_menu_add_items, None),
-                  # (wx.ID_ANY,'Remove', '', None, OP_REMOVE),
-                  # (wx.ID_ANY,'Move Up', '', None, OP_MOVE_UP),
-                  # (wx.ID_ANY,'Move Down', '', None, OP_MOVE_DOWN),
-                  # (wx.ID_ANY, '', '', None, None),
-                  (wx.ID_ANY, 'Run', '', None, OP_RUN),
-                  (wx.ID_ANY, '', '', None, None),
-                  (wx.ID_ANY, 'Result', '', None, OP_RESULT)]
+                        (wx.ID_ANY, 'Open', '', None, OP_OPEN),
+                        (wx.ID_ANY, '', '', None, None),
+                        (wx.ID_ANY, 'Copy', '', None, OP_COPY),
+                        (wx.ID_ANY, 'Edit', '', None, OP_EDIT),
+                        (wx.ID_ANY, 'Move/Rename', '', None, OP_MOVE),
+                        (wx.ID_ANY, 'Rescan', '', None, OP_RESCAN),
+                        (wx.ID_ANY, '', '', None, None),
+                        (wx.ID_DELETE, 'Delete', '', None, OP_DELETE),
+                        (wx.ID_ANY, 'Delete All', '', None, OP_DELETE_ALL),
+                        (wx.ID_REMOVE, 'Remove', '', None, OP_REMOVE),
+                        (wx.ID_ANY, '', '', None, None),
+                        # (wx.ID_ANY, 'Add', '', popup_menu_add_items, None),
+                        # (wx.ID_ANY,'Remove', '', None, OP_REMOVE),
+                        # (wx.ID_ANY,'Move Up', '', None, OP_MOVE_UP),
+                        # (wx.ID_ANY,'Move Down', '', None, OP_MOVE_DOWN),
+                        # (wx.ID_ANY, '', '', None, None),
+                        (wx.ID_ANY, 'Run', '', None, OP_RUN),
+                        (wx.ID_ANY, '', '', None, None),
+                        (wx.ID_ANY, 'Result', '', None, OP_RESULT)]
 
-    #def OnCompareItems(self):
+    # def OnCompareItems(self):
     #    pass
 
     def __init__(self, parent, dir_names=None, image_path='', entity_window=None):
@@ -1491,7 +1496,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
                                                                  treectrl.TR_ELLIPSIZE_LONG_ITEMS |
                                                                  treectrl.TR_HAS_VARIABLE_ROW_HEIGHT))
         # style=(wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
-        style=(wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
+        style = (wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
         # self.SetWindowStyle(self.GetWindowStyle() | wx.TR_HIDE_ROOT | wx.TR_FULL_ROW_HIGHLIGHT | wx.TR_NO_BUTTONS | wx.TR_NO_LINES)
         # self.SetWindowStyle(style)
         # self.SetWindowStyle(self.GetWindowStyle() | wx.TR_HIDE_ROOT | wx.TR_FULL_ROW_HIGHLIGHT)
@@ -1501,7 +1506,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
         self.root = None
         self.dirs = []
         self.name = None
-        self.parent = None    # entity parent not wx parent, should always be None
+        self.parent = None  # entity parent not wx parent, should always be None
 
         self.alt_image_list = wx.ImageList(16, 16, True)
         index = self.alt_image_list.Add(wx.Bitmap(image_closed))
@@ -1685,13 +1690,12 @@ class EntityTree(treectrl.CustomTreeCtrl):
         try:
             info = entry.render_info(entity_window.entity_detail)
             if info is not None:
-
                 # entity_window.entity_detail.SetBackgroundColour('blue')
                 entity_window.entity_detail.Refresh()
                 # entity_window.entity_detail.SetBackgroundColour('yellow')
 
-                entity_window.entity_detail_sizer.Add(info, 1, wx.EXPAND|wx.ALL)
-                #entity_window.entity_detail.Layout()
+                entity_window.entity_detail_sizer.Add(info, 1, wx.EXPAND | wx.ALL)
+                # entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 entity_window.entity_detail.FitInside()
         except Exception as e:
@@ -1727,9 +1731,9 @@ class EntityTree(treectrl.CustomTreeCtrl):
             entry = self.GetItemPyData(item)
             if entry is not None:
                 entry.expand(False)
-                #entry.expanded = False
-                #entry.working_dir().expand(entry.working_dir_relative_name())
-                #print '%s collapsed' % ()
+                # entry.expanded = False
+                # entry.working_dir().expand(entry.working_dir_relative_name())
+                # print '%s collapsed' % ()
         event.Skip()
 
     def OnExpanded(self, event):
@@ -1738,8 +1742,8 @@ class EntityTree(treectrl.CustomTreeCtrl):
             entry = self.GetItemPyData(item)
             if entry is not None:
                 entry.expand(True)
-                #entry.expanded = True
-                #print '%s expanded' % (entry.working_dir_relative_name())
+                # entry.expanded = True
+                # print '%s expanded' % (entry.working_dir_relative_name())
         event.Skip()
 
     def OnExpanding(self, event):
@@ -1758,6 +1762,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
                 filename = entry.result_filename()
                 os.startfile(filename)
 
+
 def add_result_entry(entity, result):
     if entity.is_suite():
         t = rslt.RESULT_TYPE_SUITE
@@ -1771,6 +1776,7 @@ def add_result_entry(entity, result):
     result.add_result(r)
     for e in entity.entries:
         add_result_entry(e, r)
+
 
 def build_result_tree(entity):
     et = rslt.Result(name='results', type=rslt.RESULT_TYPE_RESULT)
@@ -1794,6 +1800,7 @@ def build_result_tree(entity):
     add_result_entry(entity, parent_result)
 
     return et
+
 
 class EntityTreeEntry(object):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=-1):
@@ -1868,13 +1875,13 @@ class EntityTreeEntry(object):
         prev_entry = None
         for i in range(len(entry_list)):
             if (reverse and ((entry.is_dir() and not entry_list[i].is_dir()) or
-                    (entry.is_dir() == entry_list[i].is_dir() and
-                    os.path.normcase(entry.name) >= os.path.normcase(entry_list[i].name)))):
+                             (entry.is_dir() == entry_list[i].is_dir() and
+                              os.path.normcase(entry.name) >= os.path.normcase(entry_list[i].name)))):
                 entry_list.insert(i, entry)
                 return prev_entry
             elif (not reverse and ((entry.is_dir() and not entry_list[i].is_dir()) or
-                    (entry.is_dir() == entry_list[i].is_dir() and
-                    os.path.normcase(entry.name) < os.path.normcase(entry_list[i].name)))):
+                                   (entry.is_dir() == entry_list[i].is_dir() and
+                                    os.path.normcase(entry.name) < os.path.normcase(entry_list[i].name)))):
                 entry_list.insert(i, entry)
                 return prev_entry
             else:
@@ -2124,10 +2131,10 @@ class EntityTreeEntry(object):
                 label_panel.SetBackgroundColour('white')
 
                 open_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_OPEN_PREFIX + group.qname,
-                                              bitmap=wx.Bitmap(image_open), pos=(0,0))
+                                              bitmap=wx.Bitmap(image_open), pos=(0, 0))
                 open_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                 closed_bitmap = wx.StaticBitmap(parent=label_panel, name=ITEM_CLOSED_PREFIX + group.qname,
-                                                bitmap=wx.Bitmap(image_closed), pos=(0,2))
+                                                bitmap=wx.Bitmap(image_closed), pos=(0, 2))
                 closed_bitmap.Bind(wx.EVT_LEFT_DOWN, self.toggle_group)
                 open_bitmap.group_toggle = closed_bitmap
                 closed_bitmap.group_toggle = open_bitmap
@@ -2159,7 +2166,8 @@ class EntityTreeEntry(object):
                 if index_count is not None and index_start is not None:
                     for i in range(index_start, index_start + index_count):
                         for param in group.params:
-                            row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row, pad=pad)
+                            row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row,
+                                                    pad=pad)
             else:
                 for param in group.params:
                     index_count = param.index_count
@@ -2189,7 +2197,7 @@ class EntityTreeEntry(object):
     def render_param(self, info_panel, param_defs, param_value, param, index=None, row=0, pad=0):
         if script.param_is_active(param_defs, param.qname, param_value) is not None:
             if index is not None:
-                label =  '%s %s' % (param.label, index)
+                label = '%s %s' % (param.label, index)
                 value = ''
                 values = param_value(param.qname)
                 if type(values) == dict:
@@ -2305,7 +2313,7 @@ class Directory(EntityTreeEntry):
             if suite_name:
                 if self.get(suite_name) is not None:
                     wx.MessageBox('%s already exists in %s' % (suite_name, self.name), "New Suite Error",
-                                   wx.OK | wx.ICON_ERROR)
+                                  wx.OK | wx.ICON_ERROR)
                     return
 
             suite = svp.Suite(name=suite_name)
@@ -2344,7 +2352,7 @@ class Directory(EntityTreeEntry):
             # path = os.path.join(*path)
             path = os.path.join(working_dir, svp.SCRIPTS_DIR, os.path.normpath(script_path))
             lib_path = os.path.join(working_dir, svp.LIB_DIR)
-            test_script = script.load_script(path, lib_path, path_list = svp.extended_path_list)
+            test_script = script.load_script(path, lib_path, path_list=svp.extended_path_list)
             script_config = script.ScriptConfig(name=test_name, script=script_path)
             script_config.param_add_default(test_script, test_script.param_defs)
             # self.group_active(test_script.param_defs, test_script)
@@ -2374,6 +2382,7 @@ class Directory(EntityTreeEntry):
                 self.parent.delete(self)
         except Exception as e:
             wx.MessageBox('Error deleting directory %s' % (str(e)), 'Delete Directory Error', wx.OK | wx.ICON_ERROR)
+
 
 class WorkingDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=-1):
@@ -2482,6 +2491,7 @@ class WorkingDirectory(Directory):
             if os.path.isdir(f):
                 self.scan_svp_ext(os.path.join(d, f))
 
+
 class ScriptsDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=-1):
         Directory.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image, status_image=status_image)
@@ -2513,13 +2523,14 @@ class ScriptsDirectory(Directory):
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
+
 class ResultsDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=-1):
         Directory.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image, status_image=status_image)
         self.ops = {OP_DELETE_ALL: (self.op_delete_all, None)}
 
     def op_delete_all(self, evt, title='Delete Results',
-                  msg='Are you sure you want to delete all the results?'):
+                      msg='Are you sure you want to delete all the results?'):
         try:
             retCode = wx.MessageBox(msg, title, wx.YES_NO | wx.ICON_QUESTION)
             if (retCode == wx.YES):
@@ -2529,7 +2540,8 @@ class ResultsDirectory(Directory):
                     ### os.remove(f)
                 self.get_working_dir().rescan()
         except Exception as e:
-            wx.MessageBox('Error deleting directory %s contents' % (str(e)), 'Delete Directory Contents Error', wx.OK | wx.ICON_ERROR)
+            wx.MessageBox('Error deleting directory %s contents' % (str(e)), 'Delete Directory Contents Error',
+                          wx.OK | wx.ICON_ERROR)
 
     def scan(self):
         self.expanded = self.get_working_dir().is_expanded(self.working_dir_relative_name())
@@ -2653,6 +2665,7 @@ class ResultDirectoryEntry(EntityTreeEntry):
             entry.add_results()
         '''
 
+
 class ResultEntry(EntityTreeEntry):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=-1):
         EntityTreeEntry.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image,
@@ -2732,7 +2745,6 @@ class ResultEntry(EntityTreeEntry):
                 # print name, r[x], r[name]
                 frame.oplot(r[x], r[name])
             '''
-
 
             # pframe.plot(x, y1, title='Test 2 Axes with different y scales',
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
@@ -2821,10 +2833,10 @@ class ResultEntry(EntityTreeEntry):
             # info_panel.Hide()
 
             info_panel.SetBackgroundColour('white')
-            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH|wx.TE_MULTILINE|wx.TE_READONLY|wx.BORDER_NONE)
+            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH | wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
             info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
             info_panel.SetSizer(info_panel_sizer)
-            info_panel_sizer.Add(info_log, 1, wx.EXPAND|wx.LEFT|wx.TOP, 5)
+            info_panel_sizer.Add(info_log, 1, wx.EXPAND | wx.LEFT | wx.TOP, 5)
             for entry in f:
                 if len(entry) > 27 and entry[4] == '-' and entry[7] == '-' and entry[13] == ':' and entry[16] == ':':
                     info_log.SetDefaultStyle(wx.TextAttr((26, 13, 171)))
@@ -2951,7 +2963,6 @@ class ResultEntry(EntityTreeEntry):
                 frame.oplot(r[x], r[name])
             '''
 
-
             # pframe.plot(x, y1, title='Test 2 Axes with different y scales',
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
             # pframe.oplot(x, y2, y2label='y2', side='right', ymin=0)
@@ -2994,6 +3005,7 @@ class ScriptDirectory(Directory):
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
+
 class SuitesDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
         Directory.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image, status_image=status_image)
@@ -3029,6 +3041,7 @@ class SuitesDirectory(Directory):
                     # raise UIError('Error scanning directory %s: %s' % (path, str(e)))
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
+
 
 class SuiteDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
@@ -3071,6 +3084,7 @@ class SuiteDirectory(Directory):
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
+
 class TestsDirectory(Directory):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
         Directory.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image, status_image=status_image)
@@ -3100,14 +3114,16 @@ class TestsDirectory(Directory):
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
+
 def prompt_name(text, title, default):
     name = None
-    dialog = wx.TextEntryDialog(None, text, title, default, style=wx.OK|wx.CANCEL)
+    dialog = wx.TextEntryDialog(None, text, title, default, style=wx.OK | wx.CANCEL)
     dialog.CenterOnParent()
     if dialog.ShowModal() == wx.ID_OK:
         name = dialog.GetValue()
     dialog.Destroy()
     return name
+
 
 def prompt_new_test(parent, entity_tree, entity, title='New Test'):
     dialog = NewTestDialog(parent, entity_tree, entity, title=title)
@@ -3147,10 +3163,11 @@ class TestDirectory(Directory):
         except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
+
 class ScriptEntry(EntityTreeEntry):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
         EntityTreeEntry.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image,
-                                 status_image = status_image)
+                                 status_image=status_image)
         self.ext = svp.SCRIPT_EXT
         self.ops = {OP_DELETE: (self.op_delete, None),
                     OP_RUN: (self.op_run, None),
@@ -3240,7 +3257,7 @@ class ScriptEntry(EntityTreeEntry):
         path.append(self.name)
         path = os.path.join(*path)
         lib_path = os.path.join(self.working_dir_path(), svp.LIB_DIR)
-        test_script = script.load_script(path, lib_path, path_list = svp.extended_path_list)
+        test_script = script.load_script(path, lib_path, path_list=svp.extended_path_list)
 
         info_panel = wx.Panel(parent, -1)
         info_panel.Hide()
@@ -3255,7 +3272,7 @@ class ScriptEntry(EntityTreeEntry):
         text = wx.StaticText(title, -1, test_script.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
         title_sizer.Add(bitmap, 0, wx.ALIGN_BOTTOM)
-        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM|wx.LEFT, 16)
+        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM | wx.LEFT, 16)
         title_sizer.Add(logo_sizer, 1, wx.EXPAND)
         logo_path = self.working_dir_path()
         for logo in test_script.info.logos:
@@ -3274,7 +3291,7 @@ class ScriptEntry(EntityTreeEntry):
         info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
         info_panel.SetSizer(info_panel_sizer)
         info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
-        info_panel_content_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
+        info_panel_content_sizer.Add(title, 0, wx.EXPAND | wx.BOTTOM, 16)
         info_panel_content_sizer.Add(params_panel, 0, wx.TOP)
         info_panel_sizer.Add(info_panel_content_sizer, 0, wx.ALL, 30)
         info_panel.Show()
@@ -3333,13 +3350,14 @@ class ScriptEntry(EntityTreeEntry):
                                 row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row,
                                                         pad=pad)
                     else:
-                        row = self.render_param(info_panel, param_defs, param_value, param, index=None, row=row, pad=pad)
+                        row = self.render_param(info_panel, param_defs, param_value, param, index=None, row=row,
+                                                pad=pad)
         return row
 
     def render_param(self, info_panel, param_defs, param_value, param, index=None, row=0, pad=0):
         if script.param_is_active(param_defs, param.qname, param_value) is not None:
             if index is not None:
-                label =  '%s %s' % (param.label, index)
+                label = '%s %s' % (param.label, index)
                 if type(param.default) == dict:
                     value = param.value.get(index)
                 else:
@@ -3459,8 +3477,8 @@ class SuiteEntry(EntityTreeEntry):
 
     def op_delete(self, event):
         try:
-            msg='Are you sure you want to delete %s (suite members will not be deleted, but all ' \
-                'references will be removed from other suites)?' % (self.name)
+            msg = 'Are you sure you want to delete %s (suite members will not be deleted, but all ' \
+                  'references will be removed from other suites)?' % (self.name)
             retCode = wx.MessageBox(msg, 'Delete suite', wx.YES_NO | wx.ICON_QUESTION)
             if (retCode == wx.YES):
                 name = self.name
@@ -3500,7 +3518,7 @@ class SuiteEntry(EntityTreeEntry):
                 self.entries = []
                 path = os.path.join(*self.path())
                 self.scan()
-                #self.entity_tree.scan_suite_members(self, suite, path)
+                # self.entity_tree.scan_suite_members(self, suite, path)
                 for e in self.entries:
                     e.build(self.entity_tree, self.item)
 
@@ -3574,7 +3592,7 @@ class SuiteEntry(EntityTreeEntry):
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
         title_sizer.Add(bitmap, 0, wx.ALIGN_BOTTOM)
-        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM|wx.LEFT, 16)
+        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM | wx.LEFT, 16)
         title_sizer.Add(logo_sizer, 1, wx.EXPAND)
         logo_path = self.working_dir_path()
         for logo in suite.logos:
@@ -3586,7 +3604,7 @@ class SuiteEntry(EntityTreeEntry):
         row = 0
         params_panel = wx.Panel(info_panel, -1)
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         params_panel.SetSizer(params_panel.panel_sizer)
         params_panel.SetBackgroundColour('white')
         self.info_panel = params_panel
@@ -3601,13 +3619,14 @@ class SuiteEntry(EntityTreeEntry):
         # info_panel_sizer.Add(params_panel, 1, wx.EXPAND|wx.TOP)
         # info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
         info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
-        info_panel_content_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
+        info_panel_content_sizer.Add(title, 0, wx.EXPAND | wx.BOTTOM, 16)
         info_panel_content_sizer.Add(params_panel, 1, wx.TOP)
         info_panel_sizer.Add(info_panel_content_sizer, 0, wx.ALL, 30)
         info_panel.Show()
         # info_panel.Layout()
 
         return info_panel
+
 
 class TestEntry(EntityTreeEntry):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
@@ -3658,7 +3677,6 @@ class TestEntry(EntityTreeEntry):
         dlg.Destroy()
         self.get_working_dir().rescan()
 
-
     def op_move(self, event):
         path = self.relative_name()
         dlg = wx.TextEntryDialog(None, 'Move %s to:' % path, 'Move test', path)
@@ -3703,8 +3721,8 @@ class TestEntry(EntityTreeEntry):
 
     def op_delete(self, event):
         try:
-            msg='Are you sure you want to delete %s (all ' \
-                'references will be removed from suites)?' % (self.name)
+            msg = 'Are you sure you want to delete %s (all ' \
+                  'references will be removed from suites)?' % (self.name)
             retCode = wx.MessageBox(msg, 'Delete test', wx.YES_NO | wx.ICON_QUESTION)
             if (retCode == wx.YES):
                 name = self.name
@@ -3764,7 +3782,7 @@ class TestEntry(EntityTreeEntry):
         path = os.path.join(working_dir, svp.SCRIPTS_DIR, os.path.normpath(self.test_config.script))
         lib_path = os.path.join(working_dir, svp.LIB_DIR)
 
-        self.test_script = script.load_script(path, lib_path, path_list = svp.extended_path_list)
+        self.test_script = script.load_script(path, lib_path, path_list=svp.extended_path_list)
         self.test_script.config = self.test_config
 
     def relative_path(self):
@@ -3796,7 +3814,7 @@ class TestEntry(EntityTreeEntry):
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
         title_sizer.Add(bitmap, 0, wx.ALIGN_BOTTOM)
-        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM|wx.LEFT, 16)
+        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM | wx.LEFT, 16)
         title_sizer.Add(logo_sizer, 1, wx.EXPAND)
         logo_path = self.working_dir_path()
         for logo in self.test_script.info.logos:
@@ -3809,7 +3827,7 @@ class TestEntry(EntityTreeEntry):
         params_panel = wx.Panel(info_panel, -1)
         self.info_panel = params_panel
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         params_panel.SetSizer(params_panel.panel_sizer)
         params_panel.SetBackgroundColour('white')
         text = wx.StaticText(params_panel, -1, 'Script')
@@ -3831,7 +3849,7 @@ class TestEntry(EntityTreeEntry):
         # info_panel_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
         # info_panel_sizer.Add(params_panel, 1, wx.EXPAND|wx.TOP)
         info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
-        info_panel_content_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
+        info_panel_content_sizer.Add(title, 0, wx.EXPAND | wx.BOTTOM, 16)
         info_panel_content_sizer.Add(params_panel, 1, wx.TOP)
         info_panel_sizer.Add(info_panel_content_sizer, 0, wx.ALL, 30)
         info_panel.Show()
@@ -3842,9 +3860,9 @@ class TestEntry(EntityTreeEntry):
 
 class SuiteSuiteEntry(EntityTreeEntry):
     def __init__(self, name, entity_tree=None, parent=None, image=None, status_image=None):
-        EntityTreeEntry.__init__(self, name,  entity_tree=entity_tree, parent=parent, image=image,
+        EntityTreeEntry.__init__(self, name, entity_tree=entity_tree, parent=parent, image=image,
                                  status_image=status_image
-        )
+                                 )
         self.ext = svp.SUITE_EXT
         self.ops = {OP_RUN: (self.op_run, None)}
         self.info_panel = None
@@ -3909,7 +3927,7 @@ class SuiteSuiteEntry(EntityTreeEntry):
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
         title_sizer.Add(bitmap, 0, wx.ALIGN_BOTTOM)
-        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM|wx.LEFT, 16)
+        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM | wx.LEFT, 16)
         title_sizer.Add(logo_sizer, 1, wx.EXPAND)
         logo_path = self.working_dir_path()
         for logo in suite.logos:
@@ -3921,7 +3939,7 @@ class SuiteSuiteEntry(EntityTreeEntry):
         row = 0
         params_panel = wx.Panel(info_panel, -1)
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         params_panel.SetSizer(params_panel.panel_sizer)
         params_panel.SetBackgroundColour('white')
         self.info_panel = params_panel
@@ -3940,7 +3958,7 @@ class SuiteSuiteEntry(EntityTreeEntry):
         # info_panel_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
         # info_panel_sizer.Add(params_panel, 1, wx.EXPAND|wx.TOP)
         info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
-        info_panel_content_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
+        info_panel_content_sizer.Add(title, 0, wx.EXPAND | wx.BOTTOM, 16)
         info_panel_content_sizer.Add(params_panel, 1, wx.TOP)
         info_panel_sizer.Add(info_panel_content_sizer, 0, wx.ALL, 30)
         info_panel.Show()
@@ -3985,7 +4003,7 @@ class SuiteTestEntry(EntityTreeEntry):
         path = os.path.join(working_dir, svp.SCRIPTS_DIR, os.path.normpath(self.test_config.script))
         lib_path = os.path.join(working_dir, svp.LIB_DIR)
 
-        self.test_script = script.load_script(path, lib_path, path_list = svp.extended_path_list)
+        self.test_script = script.load_script(path, lib_path, path_list=svp.extended_path_list)
         self.test_script.config = self.test_config
 
     def param_value(self, name):
@@ -4003,7 +4021,7 @@ class SuiteTestEntry(EntityTreeEntry):
         info_panel.Hide()
 
         info_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        info_panel.panel_sizer.SetEmptyCellSize((0,0))
+        info_panel.panel_sizer.SetEmptyCellSize((0, 0))
         info_panel.SetBackgroundColour('white')
 
         title = wx.Panel(info_panel, -1)
@@ -4016,7 +4034,7 @@ class SuiteTestEntry(EntityTreeEntry):
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
         title_sizer.Add(bitmap, 0, wx.ALIGN_BOTTOM)
-        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM|wx.LEFT, 16)
+        title_sizer.Add(text, 0, wx.ALIGN_BOTTOM | wx.LEFT, 16)
         title_sizer.Add(logo_sizer, 1, wx.EXPAND)
         logo_path = self.working_dir_path()
         for logo in self.test_script.info.logos:
@@ -4029,7 +4047,7 @@ class SuiteTestEntry(EntityTreeEntry):
         params_panel = wx.Panel(info_panel, -1)
         self.info_panel = params_panel
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        params_panel.panel_sizer.SetEmptyCellSize((0,0))
+        params_panel.panel_sizer.SetEmptyCellSize((0, 0))
         params_panel.SetSizer(params_panel.panel_sizer)
         params_panel.SetBackgroundColour('white')
         text = wx.StaticText(params_panel, -1, 'Script')
@@ -4043,8 +4061,8 @@ class SuiteTestEntry(EntityTreeEntry):
         params_panel.panel_sizer.Add(text, pos=(row, 1), flag=wx.LEFT)
         row += 1
 
-#        self.render_group(params_panel, self.test_script.info.param_defs, self.test_script, self.param_value
-#                          self.test_script.info.param_defs, row)
+        #        self.render_group(params_panel, self.test_script.info.param_defs, self.test_script, self.param_value
+        #                          self.test_script.info.param_defs, row)
         self.render_group(params_panel, self.test_script.info.param_defs, self.param_value,
                           self.test_script.info.param_defs, row)
 
@@ -4053,13 +4071,14 @@ class SuiteTestEntry(EntityTreeEntry):
         # info_panel_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
         # info_panel_sizer.Add(params_panel, 1, wx.EXPAND|wx.TOP)
         info_panel_content_sizer = wx.BoxSizer(wx.VERTICAL)
-        info_panel_content_sizer.Add(title, 0, wx.EXPAND|wx.BOTTOM, 16)
+        info_panel_content_sizer.Add(title, 0, wx.EXPAND | wx.BOTTOM, 16)
         info_panel_content_sizer.Add(params_panel, 1, wx.TOP)
         info_panel_sizer.Add(info_panel_content_sizer, 0, wx.ALL, 30)
         info_panel.Show()
         # info_panel.Layout()
 
         return info_panel
+
 
 '''
 class AppWx(app.App):
@@ -4090,8 +4109,8 @@ class AppWx(app.App):
         app.App.state_update(self)
 '''
 
-class ToolFrame(wx.Frame):
 
+class ToolFrame(wx.Frame):
     menu_new_items = [(wx.ID_ANY, 'Directory...', '', None, OP_NEW_DIR),
                       (wx.ID_ANY, 'Suite...', '', None, OP_NEW_SUITE),
                       (wx.ID_ANY, 'Test...', '', None, OP_NEW_TEST)]
@@ -4112,16 +4131,16 @@ class ToolFrame(wx.Frame):
                        (wx.ID_DELETE, 'Delete', '', None, OP_DELETE),
                        (wx.ID_ANY, 'Delete All', '', None, OP_DELETE_ALL),
                        (wx.ID_REMOVE, 'Remove', '', None, OP_REMOVE)]
-                       # (wx.ID_ANY, '', '', None, None),
-                       # (wx.ID_ANY, 'Add', '', menu_add_items, None),
-                       # (wx.ID_ANY,'Remove', '', None, OP_REMOVE),
-                       # (wx.ID_ANY,'Move Up', '', None, OP_MOVE_UP),
-                       # (wx.ID_ANY,'Move Down', '', None, OP_MOVE_DOWN)]
+    # (wx.ID_ANY, '', '', None, None),
+    # (wx.ID_ANY, 'Add', '', menu_add_items, None),
+    # (wx.ID_ANY,'Remove', '', None, OP_REMOVE),
+    # (wx.ID_ANY,'Move Up', '', None, OP_MOVE_UP),
+    # (wx.ID_ANY,'Move Down', '', None, OP_MOVE_DOWN)]
     menu_pkg_items = [(wx.ID_ANY, 'Library', '', None, OP_PKG)]
     menu_help_items = [(wx.ID_ANY, 'About', '', None, OP_ABOUT)]
 
     def __init__(self, parent, title, id):
-        wx.Frame.__init__(self, parent, title=title, size=(1250,600), pos=(100,100))
+        wx.Frame.__init__(self, parent, title=title, size=(1250, 600), pos=(100, 100))
 
         # initialize app
         self.parent = parent
@@ -4151,7 +4170,7 @@ class ToolFrame(wx.Frame):
         entity_tree_panel.SetSizer(entity_tree_panel_sizer)
         self.entity_tree = EntityTree(entity_tree_panel, dir_names=self.svp.get_directory_paths(),
                                       image_path=images_path, entity_window=self)
-        entity_tree_panel_sizer.Add(self.entity_tree, 1, wx.EXPAND|wx.TOP, 5)
+        entity_tree_panel_sizer.Add(self.entity_tree, 1, wx.EXPAND | wx.TOP, 5)
         self.entity_tree.scan()
         self.entity_tree.build()
 
@@ -4161,7 +4180,7 @@ class ToolFrame(wx.Frame):
         self.menu_bar = self.create_menu_bar()
 
         self.entity_detail_sizer = wx.BoxSizer()
-        self.entity_detail.SetSizer(self.entity_detail_sizer) ###
+        self.entity_detail.SetSizer(self.entity_detail_sizer)  ###
 
         self.periodic_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.periodic_timer_event, self.periodic_timer)
@@ -4232,7 +4251,7 @@ class ToolFrame(wx.Frame):
             self.menu_bar.Replace(pos, edit_menu, 'Edit')
 
     def OnAddWorkingDir(self, evt):
-        dialog = wx.DirDialog(None, "Choose a directory:", style = wx.DD_DEFAULT_STYLE | wx.DD_NEW_DIR_BUTTON)
+        dialog = wx.DirDialog(None, "Choose a directory:", style=wx.DD_DEFAULT_STYLE | wx.DD_NEW_DIR_BUTTON)
         if dialog.ShowModal() == wx.ID_OK:
             path = dialog.GetPath()
             if path:
@@ -4249,22 +4268,23 @@ class ToolFrame(wx.Frame):
                                        break_long_words=True,
                                        break_on_hyphens=True)
         description_str = ("The SunSpec System Validation Platform "
-                                 "(SunSpec SVP) provides a framework for "
-                                 "testing and validating SunSpec compliant "
-                                 "devices and applications.")
+                           "(SunSpec SVP) provides a framework for "
+                           "testing and validating SunSpec compliant "
+                           "devices and applications.")
 
         aboutInfo = wx.adv.AboutDialogInfo()
         aboutInfo.SetName("System Validation Platform")
         aboutInfo.SetVersion(VERSION)
         aboutInfo.SetDescription(wrapper.fill(description_str))
-        #aboutInfo.SetCopyright("(C) 1992-2012")
+        # aboutInfo.SetCopyright("(C) 1992-2012")
         aboutInfo.SetWebSite("https://sunspec.org/sunspec-system-validation-platform-2/",
-                             desc= "For mor information visit SunSpec website")
-        #aboutInfo.AddDeveloper("My Self")
+                             desc="For mor information visit SunSpec website")
+        # aboutInfo.AddDeveloper("My Self")
         wx.adv.AboutBox(aboutInfo)
 
     def OnPackage(self, evt):
-        dialog = wx.DirDialog(None, "Choose a directory for python package:", style = wx.DD_DEFAULT_STYLE | wx.DD_NEW_DIR_BUTTON)
+        dialog = wx.DirDialog(None, "Choose a directory for python package:",
+                              style=wx.DD_DEFAULT_STYLE | wx.DD_NEW_DIR_BUTTON)
         if dialog.ShowModal() == wx.ID_OK:
             path = dialog.GetPath()
             if path:
@@ -4273,7 +4293,6 @@ class ToolFrame(wx.Frame):
                 print(p)
 
         dialog.Destroy()
-
 
     def OnExit(self, evt):
         self.periodic_timer.Stop()
@@ -4285,6 +4304,7 @@ class ToolFrame(wx.Frame):
         if run_context_list:
             for rc in run_context_list:
                 rc.periodic()
+
 
 class PackageDialog(wx.Dialog):
     def __init__(self, parent, title):
@@ -4323,12 +4343,14 @@ class PackageDialog(wx.Dialog):
             self.text.SetValue("Name entered:" + dlg.GetValue())
         dlg.Destroy()
 
+
 class ResultDialog(wx.Dialog):
     def __init__(self, parent=None, results=None, result_dir=None, result_name=None, title=None, image_list=None):
-        wx.Dialog.__init__(self, parent=None, title='Result', size=(1250,600), pos=(100,100),
-                           style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
+        wx.Dialog.__init__(self, parent=None, title='Result', size=(1250, 600), pos=(100, 100),
+                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
         self.parent = parent
         self.panel = RunPanel(parent=self, results=None, result_dir=result_dir, result_name=result_name, title=title)
+
 
 class ResultPanel(wx.Panel):
     def __init__(self, parent, results=None, result_dir=None, result_name=None, title=None):
@@ -4351,7 +4373,8 @@ class ResultPanel(wx.Panel):
         self.sp = wx.SplitterWindow(self, size=self.GetClientSize(), style=wx.SP_BORDER)
         self.info_window = wx.Panel(self.sp)
         self.info_window.SetBackgroundColour('white')
-        self.info_log = wx.TextCtrl(self.info_window, style=wx.TE_RICH|wx.TE_MULTILINE|wx.TE_READONLY|wx.BORDER_NONE)
+        self.info_log = wx.TextCtrl(self.info_window,
+                                    style=wx.TE_RICH | wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.result_window = wx.ScrolledWindow(self.sp)
         self.result_window.SetBackgroundColour('white')
         self.result_window.SetScrollbars(1, 1, 2000, 2000)
@@ -4360,8 +4383,8 @@ class ResultPanel(wx.Panel):
 
         self.status_bar = wx.Panel(self)
         ###
-        self.status_line = wx.Panel(self.status_bar, size=(0,1))
-        self.status_line.SetBackgroundColour((192,192,192))
+        self.status_line = wx.Panel(self.status_bar, size=(0, 1))
+        self.status_line.SetBackgroundColour((192, 192, 192))
         self.status_bar_sizer = wx.BoxSizer(wx.VERTICAL)
         self.status_bar.SetSizer(self.status_bar_sizer)
         self.status_text = wx.StaticText(self.status_bar, label='Running')
@@ -4369,27 +4392,27 @@ class ResultPanel(wx.Panel):
         status_bar_h_sizer = wx.BoxSizer(wx.HORIZONTAL)
         status_bar_v_sizer = wx.BoxSizer(wx.VERTICAL)
         status_bar_ctrl_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.status_bar_sizer.Add(status_bar_h_sizer, 0, wx.EXPAND|wx.LEFT, 5)
-        status_bar_h_sizer.Add(self.status_text, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        self.status_bar_sizer.Add(status_bar_h_sizer, 0, wx.EXPAND | wx.LEFT, 5)
+        status_bar_h_sizer.Add(self.status_text, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
         status_bar_h_sizer.Add(status_bar_v_sizer, 1, wx.EXPAND)
         status_bar_v_sizer.Add(status_bar_ctrl_sizer, 0, wx.ALIGN_CENTER)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.info_sizer = wx.BoxSizer(wx.VERTICAL)
         self.info_window.SetSizer(self.info_sizer)
-        self.info_sizer.Add(self.info_log, 1, wx.EXPAND|wx.TOP|wx.LEFT, 5)
+        self.info_sizer.Add(self.info_log, 1, wx.EXPAND | wx.TOP | wx.LEFT, 5)
 
         self.result_window_sizer = wx.BoxSizer(wx.VERTICAL)
         self.result_window.SetSizer(self.result_window_sizer)
         self.result_tree = RunTree(self.result_window, result_dir=result_dir, result=self.result,
                                    info_window=self.info_window, info_sizer=self.info_sizer)
         self.result_tree.SetBackgroundColour('white')
-        self.result_window_sizer.Add(self.result_tree, 1, wx.EXPAND|wx.TOP|wx.LEFT|wx.BOTTOM, 15)
+        self.result_window_sizer.Add(self.result_tree, 1, wx.EXPAND | wx.TOP | wx.LEFT | wx.BOTTOM, 15)
 
         ###
         self.run_ctrl = RunCtrl(self.status_bar, self.parent)
-        status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
-        status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
+        status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP | wx.BOTTOM | wx.LEFT | wx.RIGHT, 5)
+        status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP | wx.BOTTOM | wx.LEFT | wx.RIGHT, 5)
 
         self.sizer.Add(self.sp, 1, wx.EXPAND)
         self.sizer.Add(self.status_bar, 0, wx.EXPAND)
@@ -4445,7 +4468,7 @@ class ResultTree(treectrl.CustomTreeCtrl):
 
         popup_menu_items = [(wx.ID_ANY, 'Open', '', None, OP_OPEN)]
 
-        style=(wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
+        style = (wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
         self.entity = entity
         self.result_dir = result_dir
         self.result = result
@@ -4501,13 +4524,12 @@ class ResultTree(treectrl.CustomTreeCtrl):
         try:
             info = entry.render_info(self.info_window)
             if info is not None:
-
                 # entity_window.entity_detail.SetBackgroundColour('blue')
                 self.info_window.Refresh()
                 self.info_window.SetBackgroundColour('white')
-                self.info_sizer.Add(info, 1, wx.EXPAND|wx.ALL)
+                self.info_sizer.Add(info, 1, wx.EXPAND | wx.ALL)
                 self.info_window.Layout()
-                #entity_window.entity_detail.Layout()
+                # entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 ## self.info_window.FitInside()
         except Exception as e:
@@ -4516,7 +4538,6 @@ class ResultTree(treectrl.CustomTreeCtrl):
         # p = wx.Panel(self.info_window)
         # p. SetBackgroundColour('blue')
         # self.info_sizer.Add(p, 1, wx.EXPAND)
-
 
     def OnSelectionChanged(self, event):
         item = self.GetSelection()
@@ -4545,7 +4566,7 @@ class ResultEntry_(object):
             self.name = result.name
             t = self.result.type
             self.image = result_to_image.get(t, -1)
-            if t == rslt.RESULT_TYPE_TEST or t == rslt.RESULT_TYPE_SCRIPT or t == rslt.RESULT_TYPE_FILE:
+            if t in (rslt.RESULT_TYPE_TEST, rslt.RESULT_TYPE_SCRIPT, rslt.RESULT_TYPE_FILE):
                 self.status_image = result_to_image.get(self.result.status, images['none'])
             self.item = run_tree.AppendItem(parent, self.name, image=self.image, statusImage=self.status_image)
             result.ref = self
@@ -4578,10 +4599,10 @@ class ResultEntry_(object):
             # info_panel.Hide()
 
             info_panel.SetBackgroundColour('white')
-            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH|wx.TE_MULTILINE|wx.TE_READONLY|wx.BORDER_NONE)
+            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH | wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
             info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
             info_panel.SetSizer(info_panel_sizer)
-            info_panel_sizer.Add(info_log, 1, wx.EXPAND|wx.LEFT|wx.TOP, 5)
+            info_panel_sizer.Add(info_log, 1, wx.EXPAND | wx.LEFT | wx.TOP, 5)
             for entry in f:
                 if len(entry) > 27 and entry[4] == '-' and entry[7] == '-' and entry[13] == ':' and entry[16] == ':':
                     info_log.SetDefaultStyle(wx.TextAttr((26, 13, 171)))
@@ -4655,7 +4676,8 @@ class RunPanel(wx.Panel):
         self.sp = wx.SplitterWindow(self, size=self.GetClientSize(), style=wx.SP_BORDER)
         self.info_window = wx.Panel(self.sp)
         self.info_window.SetBackgroundColour('white')
-        self.info_log = wx.TextCtrl(self.info_window, style=wx.TE_RICH|wx.TE_MULTILINE|wx.TE_READONLY|wx.BORDER_NONE)
+        self.info_log = wx.TextCtrl(self.info_window,
+                                    style=wx.TE_RICH | wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
         self.run_window = wx.ScrolledWindow(self.sp)
         self.run_window.SetBackgroundColour('white')
         self.run_window.SetScrollbars(1, 1, 2000, 2000)
@@ -4664,8 +4686,8 @@ class RunPanel(wx.Panel):
 
         self.status_bar = wx.Panel(self)
         ###
-        self.status_line = wx.Panel(self.status_bar, size=(0,1))
-        self.status_line.SetBackgroundColour((192,192,192))
+        self.status_line = wx.Panel(self.status_bar, size=(0, 1))
+        self.status_line.SetBackgroundColour((192, 192, 192))
         self.status_bar_sizer = wx.BoxSizer(wx.VERTICAL)
         self.status_bar.SetSizer(self.status_bar_sizer)
         self.status_text = wx.StaticText(self.status_bar, label='Running')
@@ -4673,26 +4695,26 @@ class RunPanel(wx.Panel):
         status_bar_h_sizer = wx.BoxSizer(wx.HORIZONTAL)
         status_bar_v_sizer = wx.BoxSizer(wx.VERTICAL)
         status_bar_ctrl_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.status_bar_sizer.Add(status_bar_h_sizer, 0, wx.EXPAND|wx.LEFT, 5)
-        status_bar_h_sizer.Add(self.status_text, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+        self.status_bar_sizer.Add(status_bar_h_sizer, 0, wx.EXPAND | wx.LEFT, 5)
+        status_bar_h_sizer.Add(self.status_text, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
         status_bar_h_sizer.Add(status_bar_v_sizer, 1, wx.EXPAND)
         status_bar_v_sizer.Add(status_bar_ctrl_sizer, 0, wx.ALIGN_CENTER)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.info_sizer = wx.BoxSizer(wx.VERTICAL)
         self.info_window.SetSizer(self.info_sizer)
-        self.info_sizer.Add(self.info_log, 1, wx.EXPAND|wx.TOP|wx.LEFT, 5)
+        self.info_sizer.Add(self.info_log, 1, wx.EXPAND | wx.TOP | wx.LEFT, 5)
 
         self.run_window_sizer = wx.BoxSizer(wx.VERTICAL)
         self.run_window.SetSizer(self.run_window_sizer)
         self.run_tree = RunTree(self, self.run_window, entity=self.entity, info_window=self.info_window,
-                                   info_sizer=self.info_sizer)
+                                info_sizer=self.info_sizer)
         self.run_tree.SetBackgroundColour('white')
-        self.run_window_sizer.Add(self.run_tree, 1, wx.EXPAND|wx.TOP|wx.LEFT|wx.BOTTOM, 15)
+        self.run_window_sizer.Add(self.run_tree, 1, wx.EXPAND | wx.TOP | wx.LEFT | wx.BOTTOM, 15)
 
         self.run_ctrl = RunCtrl(self.status_bar, self)
-        status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
-        status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
+        status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP | wx.BOTTOM | wx.LEFT | wx.RIGHT, 5)
+        status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP | wx.BOTTOM | wx.LEFT | wx.RIGHT, 5)
 
         self.sizer.Add(self.sp, 1, wx.EXPAND)
         self.sizer.Add(self.status_bar, 0, wx.EXPAND)
@@ -4730,7 +4752,7 @@ class RunTree(treectrl.CustomTreeCtrl):
                                                                  treectrl.TR_TOOLTIP_ON_LONG_ITEMS |
                                                                  treectrl.TR_ELLIPSIZE_LONG_ITEMS |
                                                                  treectrl.TR_HAS_VARIABLE_ROW_HEIGHT))
-        style=(wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
+        style = (wx.TR_TWIST_BUTTONS | wx.TR_NO_LINES | wx.TR_SINGLE | wx.TR_HIDE_ROOT)
         self.panel = panel
         self.entity = entity
         self.results_dir = entity.results_dir_path()
@@ -4806,13 +4828,12 @@ class RunTree(treectrl.CustomTreeCtrl):
         try:
             info = entry.render_info(self.info_window)
             if info is not None:
-
                 # entity_window.entity_detail.SetBackgroundColour('blue')
                 self.info_window.Refresh()
                 self.info_window.SetBackgroundColour('white')
-                self.info_sizer.Add(info, 1, wx.EXPAND|wx.ALL)
+                self.info_sizer.Add(info, 1, wx.EXPAND | wx.ALL)
                 self.info_window.Layout()
-                #entity_window.entity_detail.Layout()
+                # entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 ## self.info_window.FitInside()
         except Exception as e:
@@ -4821,7 +4842,6 @@ class RunTree(treectrl.CustomTreeCtrl):
         # p = wx.Panel(self.info_window)
         # p. SetBackgroundColour('blue')
         # self.info_sizer.Add(p, 1, wx.EXPAND)
-
 
     def OnSelectionChanged(self, event):
         item = self.GetSelection()
@@ -4865,6 +4885,7 @@ class RunTree(treectrl.CustomTreeCtrl):
         event.Skip()
     '''
 
+
 class RunEntry(object):
     def __init__(self, run_tree=None, parent=None, image=None, entity=None, result=None):
         self.run_tree = run_tree
@@ -4882,7 +4903,7 @@ class RunEntry(object):
             t = self.result.type
             # self.image = result_to_image.get(t, -1)
             self.image = result_image(self.result)
-            if t == rslt.RESULT_TYPE_TEST or t == rslt.RESULT_TYPE_SCRIPT or t == rslt.RESULT_TYPE_FILE:
+            if t in (rslt.RESULT_TYPE_TEST, rslt.RESULT_TYPE_SCRIPT, rslt.RESULT_TYPE_FILE):
                 self.status_image = result_to_image.get(self.result.status, images['none'])
             self.item = run_tree.AppendItem(parent, self.name, image=self.image, statusImage=self.status_image)
             result.ref = self
@@ -4915,10 +4936,10 @@ class RunEntry(object):
             # info_panel.Hide()
 
             info_panel.SetBackgroundColour('white')
-            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH|wx.TE_MULTILINE|wx.TE_READONLY|wx.BORDER_NONE)
+            info_log = wx.TextCtrl(info_panel, style=wx.TE_RICH | wx.TE_MULTILINE | wx.TE_READONLY | wx.BORDER_NONE)
             info_panel_sizer = wx.BoxSizer(wx.VERTICAL)
             info_panel.SetSizer(info_panel_sizer)
-            info_panel_sizer.Add(info_log, 1, wx.EXPAND|wx.LEFT|wx.TOP, 5)
+            info_panel_sizer.Add(info_log, 1, wx.EXPAND | wx.LEFT | wx.TOP, 5)
             for entry in f:
                 if len(entry) > 27 and entry[4] == '-' and entry[7] == '-' and entry[13] == ':' and entry[16] == ':':
                     info_log.SetDefaultStyle(wx.TextAttr((26, 13, 171)))
@@ -4958,7 +4979,7 @@ class RunEntry(object):
             if ext != svp.LOG_EXT:
                 limit = 1000
             f = open(filename)
-            #TODO : need to be handle when it is a excel file
+            # TODO : need to be handle when it is a excel file
             for entry in f:
                 if len(entry) > 27 and entry[4] == '-' and entry[7] == '-' and entry[13] == ':' and entry[16] == ':':
                     info_log.SetDefaultStyle(wx.TextAttr((26, 13, 171)))
@@ -4982,6 +5003,7 @@ class RunEntry(object):
 
             f.close()
             # info_log.ShowPosition(0)
+
 
 class RunContext(svp.RunContext):
     def __init__(self, run_tree=None, svp_dir=None, svp_file=None, results=None, results_name=None):
@@ -5020,8 +5042,8 @@ class RunContext(svp.RunContext):
 
 class RunDialog(wx.Dialog):
     def __init__(self, entity=None, title=None):
-        wx.Dialog.__init__(self, parent=None, title='Result', size=(1250,600), pos=(100,100),
-                           style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
+        wx.Dialog.__init__(self, parent=None, title='Result', size=(1250, 600), pos=(100, 100),
+                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
         self.entity = entity
         self.panel = RunPanel(parent=self, entity=entity, title=title)
 
@@ -5067,7 +5089,7 @@ class Tool(object):
                 '''
             except Exception as e:
                 # raise
-                print ('sunssvp: error: {}'.format((e)))
+                print('sunssvp: error: {}'.format((e)))
                 return 1
         else:
             self.wx_app = wx.App(False)
@@ -5084,9 +5106,11 @@ class Tool(object):
             except Exception as e:
                 wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
+
 def main(args=None):
     tool = Tool()
     return tool.run(args)
+
 
 if __name__ == "__main__":
 

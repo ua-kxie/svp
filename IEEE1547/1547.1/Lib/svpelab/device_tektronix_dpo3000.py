@@ -725,13 +725,13 @@ class Device(object):
                     print('triggering...')
                 self.cmd('TRIGger')
                 break
-            elif trig_state == 'SAVE' or trig_state == 'SAV':
+            elif trig_state in ('SAVE', 'SAV'):
                 if self.ts is not None:
                     self.ts.log('Scope is in save mode and is not acquiring data...')
                 else:
                     print('Scope is in save mode and is not acquiring data...')
                 self.cmd('FPANEL:PRESS RUnstop')
-            elif trig_state == 'TRIGGER' or trig_state == 'TRIG':
+            elif trig_state in ('TRIGGER', 'TRIG'):
                 if self.ts is not None:
                     self.ts.log('Scope triggered and is acquiring the post trigger information...')
                 else:

@@ -54,6 +54,7 @@ class HILRuntimeException(Exception):
 class HILSimulationException(Exception):
     pass
 
+
 # Import all hardware-in-the-loop extensions in current directory.
 # A hil extension has a file name of hil_*.py and contains a function hil_params(info) that contains
 # a dict with the following entries: name, init_func.
@@ -61,6 +62,7 @@ class HILSimulationException(Exception):
 # dict of modules found, entries are: name : module_name
 
 hil_modules = {}
+
 
 def params(info, id=None, label='HIL', group_name=None, active=None, active_value=None):
     if group_name is None:
@@ -73,10 +75,11 @@ def params(info, id=None, label='HIL', group_name=None, active=None, active_valu
     info.param_group(group_name, label='%s Parameters' % label, active=active, active_value=active_value, glob=True)
     info.param(name('mode'), label='Mode', default='Disabled', values=['Disabled'])
     for mode, m in hil_modules.items():
-
         m.params(info, group_name=group_name)
 
+
 HIL_DEFAULT_ID = 'hil'
+
 
 def hil_init(ts, id=None, group_name=None):
     """

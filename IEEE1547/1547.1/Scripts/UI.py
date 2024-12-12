@@ -125,7 +125,7 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
     ---------------------------------------------------------------------------------------------------------
     '''
 
-    if cat2 == 'CAT_I' or cat2 == 'CAT_II':
+    if cat2 in ('CAT_I', 'CAT_II'):
         eut.set_ov(params={'ov_trip_v_pts': [1.2, 1.2], 'ov_trip_t_pts': [0.16, 13]})
         eut.set_uv(params={'uv_trip_v_pts': [0., 0.], 'uv_trip_t_pts': [21, 2]})
         eut.set_of(params={'of_trip_f_pts': [66., 66.], 'of_trip_t_pts': [1000, 1000]})
@@ -281,7 +281,7 @@ def set_grid_support_functions(eut, cat, cat2, test_params):
         T_response (s)      0               5             1                 10          5           0.2
     ----------------------------------------------------------------------------------------------------------------
     '''
-    if cat2 == 'CAT_I' or cat2 == 'CAT_II':
+    if cat2 in ('CAT_I', 'CAT_II'):
         if test_params['fw'] == 'la':
             eut.set_pf(params={'pf_mode_enable': True, 'pf_dbof': 1.0, 'pf_dbuf': 1.0,
                                'pf_kof': 0.05, 'pf_kuf': 0.05, 'pf_olrt': 0.})

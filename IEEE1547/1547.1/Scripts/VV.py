@@ -55,8 +55,8 @@ F = 'F'
 P = 'P'
 Q = 'Q'
 
-def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
 
+def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
     result = script.RESULT_FAIL
     daq = None
     v_nom = None
@@ -76,11 +76,11 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
         var_rated = ts.param_value('eut.var_rated')
         s_rated = ts.param_value('eut.s_rated')
 
-        #absorb_enable = ts.param_value('eut.abs_enabled')
+        # absorb_enable = ts.param_value('eut.abs_enabled')
         # DC voltages
         v_in_nom = ts.param_value('eut.v_in_nom')
-        #v_min_in = ts.param_value('eut.v_in_min')
-        #v_max_in = ts.param_value('eut.v_in_max')
+        # v_min_in = ts.param_value('eut.v_in_min')
+        # v_max_in = ts.param_value('eut.v_in_max')
 
         # AC voltages
         v_nom = ts.param_value('eut.v_nom')
@@ -111,7 +111,7 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
         '''
         a) Connect the EUT according to the instructions and specifications provided by the manufacturer.
         '''
-        ts.log_debug(15*"*"+"HIL initialization"+15*"*")
+        ts.log_debug(15 * "*" + "HIL initialization" + 15 * "*")
 
         # initialize HIL environment, if necessary
         hil = hil_lib.hil_init(ts)
@@ -121,22 +121,22 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
             ts.log('Start simulation of hil')
             hil.start_simulation()
 
-        ts.log_debug(15*"*"+"PVSIM initialization"+15*"*")
+        ts.log_debug(15 * "*" + "PVSIM initialization" + 15 * "*")
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil}) 
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
-            #daq.set_dc_measurement(pv)  # send pv obj to daq to get dc measurements
+            # daq.set_dc_measurement(pv)  # send pv obj to daq to get dc measurements
             ts.sleep(0.5)
 
         # DAS soft channels
-        ts.log_debug(15*"*"+"DAS initialization"+15*"*")
+        ts.log_debug(15 * "*" + "DAS initialization" + 15 * "*")
 
-        #das_points = {'sc': ('Q_TARGET', 'Q_TARGET_MIN', 'Q_TARGET_MAX', 'Q_MEAS', 'V_TARGET', 'V_MEAS', 'event')}
+        # das_points = {'sc': ('Q_TARGET', 'Q_TARGET_MIN', 'Q_TARGET_MAX', 'Q_MEAS', 'V_TARGET', 'V_MEAS', 'event')}
         das_points = ActiveFunction.get_sc_points()
         # initialize data acquisition system
-        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil}) 
+        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil})
 
         daq.sc['V_TARGET'] = v_nom
         daq.sc['Q_TARGET'] = 100
@@ -152,15 +152,15 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
         b) Set all voltage trip parameters to the widest range of adjustability.  Disable all reactive/active power
         control functions.
         '''
-        ts.log_debug(15*"*"+"EUT initialization"+15*"*")
+        ts.log_debug(15 * "*" + "EUT initialization" + 15 * "*")
 
-        eut = der.der_init(ts, support_interfaces={'hil': hil}) 
+        eut = der.der_init(ts, support_interfaces={'hil': hil})
         if eut is not None:
             eut.config()
             ts.log_debug(eut.measurements())
 
-            #Deactivating all functions on EUT
-            #eut.deactivate_all_fct()
+            # Deactivating all functions on EUT
+            # eut.deactivate_all_fct()
 
             ts.log_debug('Voltage trip parameters set to the widest range: v_min: {0} V, '
                          'v_max: {1} V'.format(v_low, v_high))
@@ -189,7 +189,7 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                         eut.connect(params={'Conn': True})
                     while inv_power <= p_rated * 0.85 and timeout >= 0:
                         ts.log('Inverter power is at %0.1f. Waiting up to %s more seconds or until EUT starts...' %
-                            (inv_power, timeout))
+                               (inv_power, timeout))
                         ts.sleep(1)
                         timeout -= 1
                         inv_power = eut.measurements().get('W')
@@ -203,13 +203,13 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
         '''
         c) Set all AC test source parameters to the nominal operating voltage and frequency.
         '''
-        ts.log_debug(15*"*"+"GRIDSIM initialization"+15*"*")
+        ts.log_debug(15 * "*" + "GRIDSIM initialization" + 15 * "*")
 
         if hil is not None and hil_setup == 'PHIL':
             ts.log('Start simulation of hil')
             hil.start_simulation()
 
-        grid = gridsim.gridsim_init(ts,support_interfaces={'hil': hil})  # Turn on AC so the EUT can be initialized
+        grid = gridsim.gridsim_init(ts, support_interfaces={'hil': hil})  # Turn on AC so the EUT can be initialized
         if grid is not None:
             grid.voltage(v_nom)
             # if hil is not None:  # If using HIL, give the grid simulator the hil object
@@ -239,7 +239,7 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
             ActiveFunction.reset_curve(vv_curve)
             ActiveFunction.reset_time_settings(tr=vv_response_time[vv_curve], number_tr=2)
             v_pairs = ActiveFunction.get_params(function=VV, curve=vv_curve)
-            #ts.log_debug('v_pairs:%s' % v_pairs)
+            # ts.log_debug('v_pairs:%s' % v_pairs)
 
             '''
             ff) Repeat test steps d) through ee) at EUT power set at 20% and 66% of rated power.
@@ -256,7 +256,7 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                 # Why does it need to appear twice, shouldn't this be at the driver level
                 if hil is not None:
                     if eut is not None:
-                        if  eut.measurements() is not None:
+                        if eut.measurements() is not None:
                             inv_power = eut.measurements().get('W')
                             timeout = 120.
                             if inv_power <= pv_power_setting * 0.85:
@@ -264,7 +264,8 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                                 ts.sleep(3)
                                 eut.connect(params={'Conn': True})
                             while inv_power <= pv_power_setting * 0.85 and timeout >= 0:
-                                ts.log('Inverter power is at %0.1f. Waiting up to %s more seconds or until EUT starts...' %
+                                ts.log(
+                                    'Inverter power is at %0.1f. Waiting up to %s more seconds or until EUT starts...' %
                                     (inv_power, timeout))
                                 ts.sleep(1)
                                 timeout -= 1
@@ -274,9 +275,6 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                                     raise der.DERError('Inverter did not start.')
                             ts.log('Waiting for EUT to ramp up')
                             ts.sleep(8)
-                    
-
-
 
                 '''
                 ee) Repeat test steps e) through dd) with Vref set to 1.05*VN and 0.95*VN, respectively.
@@ -284,7 +282,7 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                 for v_ref in v_ref_value:
                     ts.log('Setting v_ref at %s %% of v_nom' % (int(v_ref * 100)))
 
-                    #Setting grid to vnom before test
+                    # Setting grid to vnom before test
                     if grid is not None:
                         grid.voltage(v_nom)
 
@@ -296,10 +294,10 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                         # Activate volt-var function with following parameters
                         # SunSpec convention is to use percentages for V and Q points.
                         vv_curve_params = {
-                            'v': [(v_pairs['V1'] / v_nom) , (v_pairs['V2'] / v_nom) ,
-                                  (v_pairs['V3'] / v_nom), (v_pairs['V4'] / v_nom) ],
-                            'var': [(v_pairs['Q1'] / s_rated), (v_pairs['Q2'] / s_rated) ,
-                                    (v_pairs['Q3'] / s_rated) , (v_pairs['Q4'] / s_rated)],
+                            'v': [(v_pairs['V1'] / v_nom), (v_pairs['V2'] / v_nom),
+                                  (v_pairs['V3'] / v_nom), (v_pairs['V4'] / v_nom)],
+                            'var': [(v_pairs['Q1'] / s_rated), (v_pairs['Q2'] / s_rated),
+                                    (v_pairs['Q3'] / s_rated), (v_pairs['Q4'] / s_rated)],
                             'vref': v_ref,
                             'RmpPtTms': vv_response_time[vv_curve]
                         }
@@ -315,9 +313,9 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
                     ActiveFunction.running_test_script_parameters["VREF"] = v_ref
                     v_steps_dict = ActiveFunction.create_vv_dict_steps()
 
-                    dataset_filename = 'VV_%s_PWR_%d_vref_%d' % (vv_curve, power * 100, v_ref*100)
+                    dataset_filename = 'VV_%s_PWR_%d_vref_%d' % (vv_curve, power * 100, v_ref * 100)
                     ActiveFunction.reset_filename(filename=dataset_filename)
-                    #ts.log('------------{}------------'.format(dataset_filename))
+                    # ts.log('------------{}------------'.format(dataset_filename))
                     # Start the data acquisition systems
                     daq.data_capture(True)
 
@@ -375,11 +373,10 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
         if hil is not None:
             hil.close()
         if eut is not None:
-            #eut.volt_var(params={'Ena': False})
+            # eut.volt_var(params={'Ena': False})
             eut.close()
         if result_summary is not None:
             result_summary.close()
-
 
     return result
 
@@ -387,8 +384,8 @@ def volt_vars_mode(vv_curves, vv_response_time, pwr_lvls, v_ref_value):
 def volt_vars_mode_vref_test():
     return 1
 
-def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
 
+def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
     result = script.RESULT_FAIL
     daq = None
     v_nom = None
@@ -401,20 +398,20 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
     dataset_filename = None
 
     try:
-        #cat = ts.param_value('eut.cat')
-        #cat2 = ts.param_value('eut.cat2')
-        #sink_power = ts.param_value('eut.sink_power')
+        # cat = ts.param_value('eut.cat')
+        # cat2 = ts.param_value('eut.cat2')
+        # sink_power = ts.param_value('eut.sink_power')
         p_rated = ts.param_value('eut.p_rated')
-        #p_rated_prime = ts.param_value('eut.p_rated_prime')
+        # p_rated_prime = ts.param_value('eut.p_rated_prime')
         var_rated = ts.param_value('eut.var_rated')
         s_rated = ts.param_value('eut.s_rated')
 
-        #absorb_enable = ts.param_value('eut.abs_enabled')
+        # absorb_enable = ts.param_value('eut.abs_enabled')
 
         # DC voltages
         v_in_nom = ts.param_value('eut.v_in_nom')
-        #v_min_in = ts.param_value('eut.v_in_min')
-        #v_max_in = ts.param_value('eut.v_in_max')
+        # v_min_in = ts.param_value('eut.v_in_min')
+        # v_max_in = ts.param_value('eut.v_in_max')
 
         # AC voltages
         v_nom = ts.param_value('eut.v_nom')
@@ -456,7 +453,7 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
             grid.voltage(v_nom)
 
         # pv simulator is initialized with test parameters and enabled
-        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil}) 
+        pv = pvsim.pvsim_init(ts, support_interfaces={'hil': hil})
         if pv is not None:
             pv.power_set(p_rated)
             pv.power_on()  # Turn on DC so the EUT can be initialized
@@ -465,7 +462,7 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
         das_points = ActiveFunction.get_sc_points()
 
         # initialize data acquisition system
-        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil}) 
+        daq = das.das_init(ts, sc_points=das_points['sc'], support_interfaces={'hil': hil})
         if daq is not None:
             daq.sc['Q_TARGET'] = 100
             daq.sc['Q_TARGET_MIN'] = 100
@@ -480,7 +477,7 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
         control functions.
         '''
         # it is assumed the EUT is on
-        eut = der.der_init(ts, support_interfaces={'hil': hil}) 
+        eut = der.der_init(ts, support_interfaces={'hil': hil})
         if eut is not None:
             eut.config()
             ts.log_debug('If not done already, set L/HVRT and trip parameters to the widest range of adjustability.')
@@ -516,8 +513,8 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
         ts.log_debug(f'imbalance_resp={imbalance_resp}')
         for imbalance_response in imbalance_resp:
 
-            #Default 2 time responses cycles
-            #ActiveFunction.reset_time_settings(tr=pf_response_time)
+            # Default 2 time responses cycles
+            # ActiveFunction.reset_time_settings(tr=pf_response_time)
 
             for vv_curve in vv_curves:
 
@@ -529,19 +526,18 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 ActiveFunction.reset_time_settings(tr=vv_response_time[vv_curve], number_tr=2)
                 v_pairs = ActiveFunction.get_params(function=VV, curve=vv_curve)
                 ts.log_debug('v_pairs:%s' % v_pairs)
-                #Setting up step label
+                # Setting up step label
                 ActiveFunction.set_step_label(starting_label='G')
-
 
                 # it is assumed the EUT is on
                 if eut is not None:
                     vv_curve_params = {
-                            'v': [(v_pairs['V1'] / v_nom) , (v_pairs['V2'] / v_nom) ,
-                                  (v_pairs['V3'] / v_nom), (v_pairs['V4'] / v_nom) ],
-                            'var': [(v_pairs['Q1'] / s_rated), (v_pairs['Q2'] / s_rated) ,
-                                    (v_pairs['Q3'] / s_rated) , (v_pairs['Q4'] / s_rated)],
-                            'vref': 1.0,
-                            'RmpPtTms': vv_response_time[vv_curve]}
+                        'v': [(v_pairs['V1'] / v_nom), (v_pairs['V2'] / v_nom),
+                              (v_pairs['V3'] / v_nom), (v_pairs['V4'] / v_nom)],
+                        'var': [(v_pairs['Q1'] / s_rated), (v_pairs['Q2'] / s_rated),
+                                (v_pairs['Q3'] / s_rated), (v_pairs['Q4'] / s_rated)],
+                        'vref': 1.0,
+                        'RmpPtTms': vv_response_time[vv_curve]}
                     ts.log_debug('Sending VV points: %s' % vv_curve_params)
                     eut.volt_var(params={'Ena': True, 'curve': vv_curve_params})
 
@@ -551,8 +547,8 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 if eut is not None:
                     ts.log_debug('Initial EUT VV settings are %s' % eut.volt_var())
                 ts.log_debug('curve points:  %s' % v_pairs)
-                if hil is not None:                        
-                    ts.log('Start simulation of hil')  
+                if hil is not None:
+                    ts.log('Start simulation of hil')
                     hil.start_simulation()
                 '''
                 g) Wait for steady state to be reached.
@@ -573,7 +569,7 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 ts.log('Starting imbalance test with VV mode at %s' % (imbalance_response))
 
                 ActiveFunction.set_imbalance_config(imbalance_angle_fix=imbalance_fix)
-                #ts.log_debug(f'{imbalance_response}')
+                # ts.log_debug(f'{imbalance_response}')
                 dataset_filename = f'VV_IMB_{imbalance_fix}_{imbalance_response}'
 
                 ActiveFunction.reset_filename(filename=dataset_filename)
@@ -587,12 +583,13 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 if grid is not None:
                     step_label = ActiveFunction.get_step_label()
                     ts.log('Voltage step: setting Grid simulator to case A (IEEE 1547.1-Table 24)(%s)' % step)
-                    ActiveFunction.start( step_label=step_label)
-                    v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_a', imbalance_resp=imbalance_response)
+                    ActiveFunction.start(step_label=step_label)
+                    v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_a',
+                                                                  imbalance_resp=imbalance_response)
                     ts.log_debug(f'v_target={v_target}')
                     step_dict = {'V': v_target}
                     ActiveFunction.record_timeresponse()
-                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
+                    ActiveFunction.evaluate_criterias(step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 '''
@@ -601,12 +598,12 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 if grid is not None:
                     step_label = ActiveFunction.get_step_label()
                     v_target = v_nom
-                    ActiveFunction.start( step_label=step_label)
+                    ActiveFunction.start(step_label=step_label)
                     ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_nom, step))
                     grid.voltage(v_target)
                     step_dict = {'V': v_target}
                     ActiveFunction.record_timeresponse()
-                    ActiveFunction.evaluate_criterias( step_dict=step_dict)
+                    ActiveFunction.evaluate_criterias(step_dict=step_dict)
                     result_summary.write(ActiveFunction.write_rslt_sum())
 
                 """
@@ -614,9 +611,10 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 """
                 if grid is not None:
                     step_label = ActiveFunction.get_step_label()
-                    ActiveFunction.start( step_label=step_label)
+                    ActiveFunction.start(step_label=step_label)
                     ts.log('Voltage step: setting Grid simulator to case B (IEEE 1547.1-Table 24)(%s)' % step)
-                    v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_b', imbalance_resp=imbalance_response)
+                    v_target = ActiveFunction.set_grid_asymmetric(grid=grid, case='case_b',
+                                                                  imbalance_resp=imbalance_response)
                     step_dict = {'V': v_target}
                     ActiveFunction.record_timeresponse()
                     ActiveFunction.evaluate_criterias(step_dict=step_dict)
@@ -628,7 +626,7 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
                 if grid is not None:
                     step_label = ActiveFunction.get_step_label()
                     v_target = v_nom
-                    ActiveFunction.start( step_label=step_label)
+                    ActiveFunction.start(step_label=step_label)
                     ts.log('Voltage step: setting Grid simulator voltage to %s (%s)' % (v_nom, step))
                     grid.voltage(v_nom)
                     step_dict = {'V': v_target}
@@ -679,16 +677,16 @@ def volt_var_mode_imbalanced_grid(imbalance_resp, vv_curves, vv_response_time):
         if hil is not None:
             hil.close()
         if eut is not None:
-            #eut.volt_var(params={'Ena': False})
-            #eut.volt_watt(params={'Ena': False})
+            # eut.volt_var(params={'Ena': False})
+            # eut.volt_watt(params={'Ena': False})
             eut.close()
         if result_summary is not None:
             result_summary.close()
 
     return result
 
-def test_run():
 
+def test_run():
     result = script.RESULT_FAIL
 
     try:
@@ -704,7 +702,7 @@ def test_run():
         # list of active tests
         vv_curves = []
         vv_response_time = [0, 0, 0, 0]
-        imbalance_resp=[]
+        imbalance_resp = []
         if mode == 'Vref-test':
             vv_curves['characteristic 1'] = 1
             vv_response_time[1] = ts.param_value('vv.test_1_t_r')
@@ -716,7 +714,8 @@ def test_run():
         if mode == 'Imbalanced grid':
             if ts.param_value('eut.imbalance_resp') == 'EUT response to the individual phase voltages':
                 imbalance_resp.append('INDIVIDUAL_PHASES_VOLTAGES')
-            elif ts.param_value('eut.imbalance_resp') == 'EUT response to the average of the three-phase effective (RMS)':
+            elif ts.param_value(
+                    'eut.imbalance_resp') == 'EUT response to the average of the three-phase effective (RMS)':
                 imbalance_resp.append('AVG_3PH_RMS')
             else:  # 'EUT response to the positive sequence of voltages'
                 imbalance_resp.append('POSITIVE_SEQUENCE_VOLTAGES')
@@ -726,7 +725,7 @@ def test_run():
 
             result = volt_var_mode_imbalanced_grid(imbalance_resp=imbalance_resp,
                                                    vv_curves=vv_curves,
-                                                   vv_response_time=vv_response_time )
+                                                   vv_response_time=vv_response_time)
 
         # Normal volt-var test (Section 5.14.4)
         else:
@@ -828,7 +827,8 @@ info.param('vv.irr', label='Power Levels iteration', default='All', values=['100
 info.param('vv.vref', label='Voltage reference iteration', default='All', values=['100%', '95%', '105%', 'All'],
            active='vv.mode', active_value=['Normal'])
 info.param('vv.imbalance_fix', label='Use minimum fix requirements from table 24 ?',
-           default='not_fix', values=['not_fix', 'fix_ang', 'fix_mag', 'std'], active='vv.mode', active_value=['Imbalanced grid'])
+           default='not_fix', values=['not_fix', 'fix_ang', 'fix_mag', 'std'], active='vv.mode',
+           active_value=['Imbalanced grid'])
 
 # EUT general parameters
 info.param_group('eut', label='EUT Parameters', glob=True)
@@ -850,8 +850,6 @@ info.param('eut.imbalance_resp', label='EUT response to phase imbalance is calcu
                    'EUT response to the average of the three-phase effective (RMS)',
                    'EUT response to the positive sequence of voltages'])
 
-
-
 # Other equipment parameters
 der.params(info)
 gridsim.params(info)
@@ -861,6 +859,7 @@ hil_lib.params(info)
 
 # Add the SIRFN logo
 info.logo('sirfn.png')
+
 
 def script_info():
     return info
